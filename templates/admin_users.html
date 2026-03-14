@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Управление пользователями</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Курсовые проекты</a>
+            <div class="d-flex">
+                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
+                <a href="/dashboard" class="btn btn-outline-light btn-sm me-2">🏠 Главная</a>
+                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>👥 Управление пользователями</h1>
+        
+        <!-- Кнопки навигации -->
+        <div class="mb-3">
+            <a href="/dashboard" class="btn btn-outline-primary">🏠 Главная</a>
+            <a href="/admin" class="btn btn-secondary">← Админ-панель</a>
+            <a href="/download-passwords" class="btn btn-success">📥 Пароли импорта</a>
+            <a href="/admin/download-reset-passwords" class="btn btn-info">📥 Сброшенные пароли</a>
+        </div>
+        
+        {{if .success}}
+        <div class="alert alert-success">{{.success}}</div>
+        {{end}}
+        
+        {{if .error}}
+        <div class="alert alert-danger">{{.error}}</div>
+        {{end}}
+        
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Login</th>
+                    <th>ФИО</th>
+                    <th>Группа</th>
+                    <th>Роль</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .users}}
+                <tr>
+                    <td>{{.ID}}</td>
+                    <td>{{.Login}}</td>
+                    <td>{{.FullName}}</td>
+                    <td>{{.Group}}</td>
+                    <td>
+                        {{if eq .Role "admin"}}
+                        <span class="badge bg-danger">Админ</span>
+                        {{else}}
+                        <span class="badge bg-primary">Студент</span>
+                        {{end}}
+                    </td>
+                    <td>
+                        {{if ne .Role "admin"}}
+                        <button class="btn btn-sm btn-warning btn-reset-password" 
+                                data-user-id="{{.ID}}" 
+                                data-user-login="{{.Login}}"
+                                data-user-full_name="{{.FullName}}">
+                            🔄 Пароль
+                        </button>
+                        <button class="btn btn-sm btn-danger btn-delete-user" 
+                                data-user-id="{{.ID}}" 
+                                data-user-full_name="{{.FullName}}">
+                            🗑️ Удалить
+                        </button>
+                        {{end}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+    // Сброс пароля
+    document.querySelectorAll('.btn-reset-password').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var userId = this.getAttribute('data-user-id');
+            var login = this.getAttribute('data-user-login');
+            var userName = this.getAttribute('data-user-full_name');
+            
+            if (!confirm('Сбросить пароль для ' + userName + '?')) return;
+            
+            fetch('/admin/users/reset-password', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'user_id=' + userId
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Новый пароль для ' + data.login + ':\n' + data.password + '\n\nСохраните и передайте пользователю!');
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            });
+        });
+    });
+
+    // Удаление пользователя
+    document.querySelectorAll('.btn-delete-user').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var userId = this.getAttribute('data-user-id');
+            var userName = this.getAttribute('data-user-full_name');
+            
+            if (!confirm('⚠️ Удалить пользователя ' + userName + '?')) return;
+            
+            // Сначала пробуем подтвердить пароль (если нужно)
+            checkAndDelete(userId, userName);
+        });
+    });
+
+    function checkAndDelete(userId, userName) {
+        fetch('/admin/users/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: 'user_id=' + userId
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.reauth_required) {
+                // Требуется подтверждение пароля
+                showReauthModal(userId, userName, data.redirect);
+            } else if (data.success) {
+                alert('✅ Пользователь удалён');
+                location.reload();
+            } else {
+                alert('❌ Ошибка: ' + data.error);
+            }
+        })
+        .catch(err => {
+            // Если получили HTML вместо JSON
+            alert('❌ Ошибка сети. Попробуйте обновить страницу.');
+            console.error(err);
+        });
+    }
+
+    function showReauthModal(userId, userName, redirectUrl) {
+        // Показываем модальное окно для ввода пароля
+        var password = prompt('⚠️ Требуется подтверждение пароля администратора:\n\nВведите ваш пароль для удаления ' + userName);
+        if (!password) return;
+        
+        // Отправляем пароль на подтверждение
+        fetch('/admin/confirm-password-json', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'password=' + encodeURIComponent(password)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Пароль подтверждён, пробуем удалить снова
+                checkAndDelete(userId, userName);
+            } else {
+                alert('❌ Неверный пароль');
+            }
+        })
+        .catch(err => {
+            alert('❌ Ошибка подтверждения пароля');
+        });
+    }
+    </script>
+</body>
+</html>

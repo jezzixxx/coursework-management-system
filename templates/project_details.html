@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{.project.Title}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Курсовые проекты</a>
+            <div class="d-flex">
+                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
+                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <!-- Кнопки навигации -->
+        <div class="mb-3">
+            <a href="/dashboard" class="btn btn-outline-primary">🏠 Главная</a>
+            <a href="/my-projects" class="btn btn-secondary">← Назад к списку</a>
+        </div>
+        
+        <!-- Карточка проекта -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">{{.project.Title}}</h4>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{.project.Description}}</p>
+                <div class="mb-3">
+                    <span class="badge bg-secondary fs-6">ID: {{.project.ID}}</span>
+                    <span class="badge bg-info fs-6">Статус: 
+                        {{if eq .project.CurrentStatus "new"}}Новый
+                        {{else if eq .project.CurrentStatus "in_progress"}}В работе
+                        {{else if eq .project.CurrentStatus "review"}}На проверке
+                        {{else if eq .project.CurrentStatus "approved"}}Принят
+                        {{else if eq .project.CurrentStatus "rejected"}}На доработке
+                        {{else}}{{.project.CurrentStatus}}{{end}}
+                    </span>
+                </div>
+                
+                <div class="d-flex gap-2 mb-3">
+                    <a href="/project/{{.project.ID}}/files" class="btn btn-primary">📁 Файлы проекта</a>
+                    <a href="/project/{{.project.ID}}/checklist" class="btn btn-info">📋 Чеклист</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Статус проекта (только для админа) -->
+        {{if eq .user.Role "admin"}}
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">📊 Управление статусом</h5>
+            </div>
+            <div class="card-body">
+                <form action="/admin/projects/update-status" method="POST" class="d-inline">
+                    <input type="hidden" name="project_id" value="{{.project.ID}}">
+                    <select name="status" class="form-select d-inline w-auto">
+                        <option value="new" {{if eq .project.CurrentStatus "new"}}selected{{end}}>Новый</option>
+                        <option value="in_progress" {{if eq .project.CurrentStatus "in_progress"}}selected{{end}}>В работе</option>
+                        <option value="review" {{if eq .project.CurrentStatus "review"}}selected{{end}}>На проверке</option>
+                        <option value="approved" {{if eq .project.CurrentStatus "approved"}}selected{{end}}>Принят</option>
+                        <option value="rejected" {{if eq .project.CurrentStatus "rejected"}}selected{{end}}>На доработке</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">Изменить статус</button>
+                </form>
+            </div>
+        </div>
+        {{end}}
+        
+        <!-- Исполнители -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>👥 Исполнители ({{len .project.Members}} / 2)</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group mb-3">
+                    {{range .project.Members}}
+                    <li class="list-group-item">{{.FullName}} ({{.Group}})</li>
+                    {{end}}
+                </ul>
+                
+                {{if eq .user.Role "admin"}}
+                    {{if lt (len .project.Members) 2}}
+                    <a href="/projects/{{.project.ID}}/add-member" class="btn btn-success btn-sm">➕ Добавить участника</a>
+                    {{else}}
+                    <span class="badge bg-danger">Лимит достигнут (2/2)</span>
+                    {{end}}
+                {{end}}
+            </div>
+        </div>
+        
+        <!-- Комментарии -->
+        <div class="card">
+            <div class="card-header">
+                <h5>💬 Комментарии</h5>
+            </div>
+            <div class="card-body">
+                <!-- Форма добавления -->
+                <form action="/comments/add" method="POST" class="mb-4">
+                    <input type="hidden" name="project_id" value="{{.project.ID}}">
+                    <textarea name="text" class="form-control mb-2" rows="3" placeholder="Ваш комментарий..." required></textarea>
+                    <button type="submit" class="btn btn-primary btn-sm">Добавить комментарий</button>
+                </form>
+                
+                <!-- Список комментариев -->
+                {{if .project.Comments}}
+                <div class="comments-list">
+                    {{range .project.Comments}}
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <p class="mb-1">{{.Text}}</p>
+                            <small class="text-muted">
+                                {{.Author.FullName}} • {{.CreatedAt.Format "02.01.2006 15:04"}}
+                            </small>
+                            {{if or (eq $.user.Role "admin") (eq .AuthorID $.user.ID)}}
+                            <form action="/comments/delete" method="POST" class="d-inline float-end">
+                                <input type="hidden" name="comment_id" value="{{.ID}}">
+                                <input type="hidden" name="project_id" value="{{.project.ID}}">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Удалить комментарий?')">🗑️</button>
+                            </form>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+                {{else}}
+                <p class="text-muted">Комментариев пока нет</p>
+                {{end}}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

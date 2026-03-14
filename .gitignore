@@ -1,0 +1,27 @@
+# Переменные окружения (ПАРОЛИ И КЛЮЧИ)
+.env
+
+# Скомпилированные файлы
+main
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Файлы с паролями (ни в коем случае не коммитить!)
+exported_passwords.csv
+reset_passwords.csv
+students.csv
+
+# Логи
+*.log
+
+# Папка с загруженными файлами пользователей
+uploads/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

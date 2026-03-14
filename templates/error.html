@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ошибка</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Курсовые проекты</a>
+            <div class="d-flex">
+                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
+                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <div class="alert alert-danger">
+            <h4>⛔ Доступ запрещён</h4>
+            <p>{{.error}}</p>
+        </div>
+        <a href="/my-projects" class="btn btn-primary">← К моим проектам</a>
+    </div>
+</body>
+</html>

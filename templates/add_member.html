@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Добавить участника</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Курсовые проекты</a>
+            <div class="d-flex">
+                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
+                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>Добавить участника в проект</h1>
+        
+        <div class="mb-3">
+            <a href="/dashboard" class="btn btn-outline-primary">🏠 Главная</a>
+            <a href="/projects" class="btn btn-secondary">← К проектам</a>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">{{.project.Title}}</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Текущее количество участников:</strong> {{.memberCount}} / 2</p>
+                
+                {{if .canAdd}}
+                <div class="alert alert-success">
+                    ✅ Можно добавить ещё одного участника
+                </div>
+                
+                <form id="addMemberForm">
+                    <input type="hidden" name="project_id" value="{{.project.ID}}">
+                    <div class="mb-3">
+                        <label class="form-label">Выберите студента</label>
+                        <select name="student_id" class="form-select" required>
+                            <option value="">-- Выберите студента --</option>
+                            {{range .availableStudents}}
+                            <option value="{{.ID}}">{{.FullName}} ({{.Group}})</option>
+                            {{end}}
+                        </select>
+                        <div class="form-text">
+                            Студент не должен состоять в других проектах
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">➕ Добавить в проект</button>
+                </form>
+                {{else}}
+                <div class="alert alert-danger">
+                    ⛔ Достигнут лимит участников (2 человека)
+                </div>
+                {{end}}
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5>👥 Текущие участники</h5>
+            </div>
+            <div class="card-body">
+                {{if .project.Members}}
+                <ul class="list-group">
+                    {{range .project.Members}}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{.FullName}} ({{.Group}})</span>
+                        <button class="btn btn-sm btn-danger btn-remove-member" 
+                                data-project-id="{{$.project.ID}}" 
+                                data-student-id="{{.ID}}"
+                                data-student-name="{{.FullName}}">
+                            🗑️ Удалить из проекта
+                        </button>
+                    </li>
+                    {{end}}
+                </ul>
+                {{else}}
+                <p class="text-muted">В проекте пока нет участников</p>
+                {{end}}
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Ждём полной загрузки DOM
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // === Добавление участника ===
+        var addForm = document.getElementById('addMemberForm');
+        if (addForm) {
+            addForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                var formData = new FormData(this);
+                
+                fetch('/admin/projects/add-member', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams(formData).toString()
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ ' + data.message);
+                        location.reload();
+                    } else {
+                        alert('❌ Ошибка: ' + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert('Ошибка сети: ' + err);
+                });
+            });
+        }
+        
+        // === Удаление участника ===
+        var deleteButtons = document.querySelectorAll('.btn-remove-member');
+        deleteButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var projectId = this.getAttribute('data-project-id');
+                var studentId = this.getAttribute('data-student-id');
+                var studentName = this.getAttribute('data-student-name');
+                
+                if (!confirm('⚠️ Удалить ' + studentName + ' из проекта?')) return;
+                
+                fetch('/admin/projects/remove-member', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'project_id=' + projectId + '&student_id=' + studentId
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Студент удалён из проекта');
+                        location.reload();
+                    } else {
+                        alert('❌ Ошибка: ' + data.error);
+                    }
+                })
+                .catch(err => {
+                    alert('Ошибка сети: ' + err);
+                });
+            });
+        });
+    });
+    </script>
+</body>
+</html>

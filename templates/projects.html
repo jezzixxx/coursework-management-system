@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Проекты</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Курсовые проекты</a>
+            <div class="d-flex">
+                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
+                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>Все проекты</h1>
+        <a href="/projects/create" class="btn btn-primary mb-3">+ Создать проект</a>
+        <a href="/admin" class="btn btn-secondary mb-3">← Назад в админку</a>
+        
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Название</th>
+                    <th>Статус</th>
+                    <th>Исполнители</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .projects}}
+                <tr>
+                    <td>{{.ID}}</td>
+                    <td>{{.Title}}</td>
+                    <td>
+                        <span class="badge bg-info">{{.CurrentStatus}}</span>
+                    </td>
+                    <td>
+                        {{range .Members}}
+                        <span class="badge bg-secondary">{{.FullName}}</span>
+                        {{end}}
+                    </td>
+                    <td>
+                        <a href="/project/{{.ID}}" class="btn btn-sm btn-outline-primary">Просмотр</a>
+                        <a href="/projects/{{.ID}}/add-member" class="btn btn-sm btn-outline-success">➕ Участник</a>
+                        <button class="btn btn-sm btn-danger btn-delete-project" 
+                                data-project-id="{{.ID}}" 
+                                data-project-title="{{.Title}}">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    <script>
+    document.querySelectorAll('.btn-delete-project').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var projectId = this.getAttribute('data-project-id');
+            var projectTitle = this.getAttribute('data-project-title');
+            
+            if (!confirm('⚠️ Удалить проект "' + projectTitle + '"?\n\nВсе файлы будут безвозвратно удалены!')) return;
+            
+            fetch('/admin/projects/delete', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'project_id=' + projectId
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Проект удалён!');
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html>

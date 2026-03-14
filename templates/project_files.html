@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Файлы проекта</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Курсовые проекты</a>
+            <div class="d-flex">
+                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
+                <a href="/dashboard" class="btn btn-outline-light btn-sm me-2">🏠 Главная</a>
+                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <h1>Файлы проекта: {{.project.Title}}</h1>
+        <a href="/project/{{.project.ID}}" class="btn btn-secondary mb-3">← Назад к проекту</a>
+        
+        {{if .error}}
+        <div class="alert alert-danger">{{.error}}</div>
+        {{end}}
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>📤 Загрузить файл</h5>
+            </div>
+            <div class="card-body">
+                <form action="/files/upload" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="project_id" value="{{.project.ID}}">
+                    <div class="row">
+                        <div class="col-md-3">
+                        <select name="file_type" class="form-select" required>
+                            <optgroup label="📋 Задания и визируемые документы">
+                                <option value="tz">Техническое задание (ТЗ)</option>
+                                <option value="title_pages">Титульные листы</option>
+                                <option value="task">Учебное задание</option>
+                            </optgroup>
+                            <optgroup label="🔧 Конструкторская документация (ЕСКД)">
+                                <option value="structural_scheme">Схема структурная/функциональная</option>
+                                <option value="rpz">РПЗ (Расчетно-пояснительная записка)</option>
+                                <option value="electrical_scheme">Схема электрическая принципиальная</option>
+                                <option value="pcb_drawing">Чертеж ПП</option>
+                                <option value="assembly_drawing">Сборочный чертеж ПП</option>
+                                <option value="specification">Спецификация</option>
+                            </optgroup>
+                            <optgroup label="💻 Программная документация (ЕСПД)">
+                                <option value="algorithm_scheme">Схемы алгоритмов</option>
+                                <option value="software_structure">Схема структурная ПО</option>
+                                <option value="source_code">Исходные тексты программы</option>
+                                <option value="program_description">Описание программы</option>
+                            </optgroup>
+                            <optgroup label="📐 CAD / Моделирование">
+                                <option value="kompas_model">Компас-3D (.a3d, .cdw, .spw)</option>
+                                <option value="proteus_project">Proteus (.pdsprj, .dsn, .lyt)</option>
+                                <option value="pcb_files">PCB (.sch, .pcb, .gbr, .drl)</option>
+                                <option value="cad_3d">3D модели (.step, .stl, .igs)</option>
+                                <option value="makefile">MakeFiles и сборка</option>
+                            </optgroup>
+                            <optgroup label="📖 Эксплуатационная документация">
+                                <option value="user_manual">Руководство оператора</option>
+                                <option value="admin_manual">Руководство сисадмина</option>
+                                <option value="programmer_manual">Руководство программиста</option>
+                            </optgroup>
+                            <optgroup label="📊 Дополнительно">
+                                <option value="presentation">Презентация</option>
+                                <option value="posters">Плакаты/Графические материалы</option>
+                                <option value="video">Видео-руководства</option>
+                                <option value="other">Другое</option>
+                            </optgroup>
+                        </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="file" name="file" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">Загрузить</button>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">
+                        Разрешены: pdf, doc, docx, zip, txt (макс 10MB)
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <h5>📁 Файлы проекта</h5>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Тип</th>
+                    <th>Имя</th>
+                    <th>Версия</th>
+                    <th>Размер</th>
+                    <th>Загружен</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .project.Files}}
+                {{if .IsActive}}
+                <tr>
+                    <td>{{.FileType}}</td>
+                    <td>{{.DisplayName}}</td>
+                    <td>v{{.Version}}</td>
+                    <td>{{.Size}} bytes</td>
+                    <td>{{.UploadedAt.Format "02.01.2006 15:04"}}</td>
+                    <td>
+                        <a href="/files/{{.ID}}/download" class="btn btn-sm btn-success">Скачать</a>
+                        <a href="/files/{{.ID}}/history" class="btn btn-sm btn-info">История</a>
+                    </td>
+                </tr>
+                {{end}}
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
