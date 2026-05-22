@@ -24,6 +24,7 @@ func main() {
 		&models.File{},
 		&models.Comment{},
 		&models.ProjectStatusHistory{},
+		&models.ProjectDocumentType{},
 	)
 	if err != nil {
 		log.Fatal("Failed to migrate database:", err)
@@ -43,6 +44,8 @@ func main() {
 	// Загружаем HTML шаблоны
 	root, _ := filepath.Abs(".")
 	r.LoadHTMLGlob(filepath.Join(root, "templates/*"))
+
+	r.Static("/static", filepath.Join(root, "static"))
 
 	// === Публичные маршруты (без авторизации) ===
 	r.GET("/", func(c *gin.Context) {
@@ -92,7 +95,6 @@ func main() {
 			admin.GET("/admin", handlers.ShowAdminDashboard)
 			admin.GET("/import", handlers.ShowImportPage)
 			admin.POST("/import", handlers.ImportUsers)
-			admin.GET("/download-passwords", handlers.DownloadPasswords)
 
 			// Проекты (админ)
 			admin.GET("/projects", handlers.ShowProjects)
@@ -110,16 +112,23 @@ func main() {
 
 			// Статус проекта
 			admin.POST("/admin/projects/update-status", handlers.UpdateProjectStatus)
+			admin.POST("/admin/files/:id/review", handlers.ReviewFile)
 			// Подтверждение пароля админа
 			admin.POST("/admin/confirm-password", middleware.ConfirmAdminPassword)
 
 			// Удаление с подтверждением
 			admin.POST("/admin/users/delete", middleware.AdminReauthMiddleware(), handlers.AdminDeleteUser)
 			admin.POST("/admin/projects/delete", middleware.AdminReauthMiddleware(), handlers.AdminDeleteProject)
-			// Сброс пароля
-			admin.GET("/admin/download-reset-passwords", handlers.DownloadResetPasswords)
+			protected.POST("/files/:id/delete", handlers.DeleteFile)
 			// В блок admin добавь:
 			admin.POST("/admin/confirm-password-json", middleware.ConfirmAdminPasswordJSON)
+			// === Редактирование проекта (только админ) ===
+			admin.GET("/projects/:id/edit", handlers.ShowEditProject)
+			admin.POST("/projects/:id/edit", handlers.UpdateProject)
+			admin.GET("/download-passwords", handlers.DownloadPasswords)
+			admin.GET("/download-reset-passwords", handlers.DownloadResetPasswords)
+			// Управление чек-листом проекта (toggle)
+			admin.POST("/admin/projects/:id/documents/:code/complete", handlers.ToggleDocumentTypeComplete)
 		}
 	}
 

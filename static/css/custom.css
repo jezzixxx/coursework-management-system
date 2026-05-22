@@ -1,0 +1,158 @@
+    :root {
+      --bs-primary: #10b981;
+      --bs-primary-rgb: 16, 185, 129;
+      --bs-card-border-radius: 1rem;
+      --bs-btn-border-radius: 0.65rem;
+      --bs-body-font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+    }
+
+    :root, [data-bs-theme="light"] {
+      --bs-body-bg: #f8fafc;
+      --bs-body-color: #0f172a;
+      --bs-border-color: #e2e8f0;
+      --bs-card-bg: #ffffff;
+      --bs-secondary-color: #64748b;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root, [data-bs-theme="dark"] {
+        --bs-body-bg: #0f172a;
+        --bs-body-color: #e2e8f0;
+        --bs-border-color: #334155;
+        --bs-card-bg: #1e293b;
+        --bs-secondary-color: #94a3b8;
+      }
+    }
+
+    body { 
+      min-height: 100vh; 
+      display: flex; 
+      flex-direction: column;
+      letter-spacing: -0.01em;
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
+    }
+
+    .card {
+      background-color: var(--bs-card-bg);
+      border-color: var(--bs-border-color);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .btn-primary { 
+      --bs-btn-bg: var(--bs-primary); 
+      --bs-btn-border-color: var(--bs-primary);
+      --bs-btn-color: #fff;
+    }
+    .btn-primary:hover, .btn-primary:focus { 
+      --bs-btn-bg: #059669; 
+      --bs-btn-border-color: #059669;
+    }
+    .btn-mine{
+      --bs-btn-bg: #177d73; 
+      --bs-btn-border-color: #177d73;
+      --bs-btn-color: white;
+        /* При наведении */
+  --bs-btn-hover-bg: #11635b;
+  --bs-btn-hover-border-color: #11635b;
+  --bs-btn-hover-color: #fff;
+  
+  /* При нажатии */
+  --bs-btn-active-bg: #0d4d47;
+  --bs-btn-active-border-color: #0d4d47;
+  --bs-btn-active-color: #fff;
+  
+  /* При фокусе (клавиатура) */
+  --bs-btn-focus-shadow-rgb: 23, 125, 115; /* RGB для тени */
+  
+  /* Если кнопка отключена */
+  --bs-btn-disabled-bg: #177d73;
+  --bs-btn-disabled-border-color: #177d73;
+  --bs-btn-disabled-color: #fff;
+  --bs-btn-disabled-opacity: 0.65;
+  
+  /* Убираем лишние эффекты */
+  box-shadow: none;
+  border-radius: 8px; /* Опционально: скругление */
+  padding: 0.5rem 1.25rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+
+    .btn-outline-secondary {
+      --bs-btn-color: var(--bs-body-color);
+      --bs-btn-border-color: var(--bs-border-color);
+    }
+    .btn-outline-secondary:hover {
+      --bs-btn-bg: var(--bs-body-color);
+      --bs-btn-color: var(--bs-body-bg);
+    }
+    .border-primary-outline {
+    border: 2px solid var(--bs-primary);
+    border-radius: calc(1rem - 1px); /* учитывает border-radius карточки */
+    background-color: transparent;
+    color: var(--bs-body-color);
+    margin: -1.25rem -1.25rem 1rem -1.25rem; /* как у card-header */
+}
+
+    .icon {
+      width: 1.5em; height: 1.5em; vertical-align: -0.25em;
+      fill: none; stroke: currentColor; stroke-width: 2;
+      stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;
+    }
+
+    h1, h2, h3, h4, h5, h6, .navbar-brand { 
+      letter-spacing: -0.03em; 
+      color: var(--bs-body-color); 
+    }
+
+    .navbar {
+      background-color: var(--bs-card-bg);
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+    .navbar-brand { color: var(--bs-body-color) !important; }
+
+    .breadcrumb-item a { color: var(--bs-primary); text-decoration: none; }
+    .breadcrumb-item a:hover { text-decoration: underline; }
+    .breadcrumb-item.active { color: var(--bs-secondary-color); }
+    .breadcrumb-item + .breadcrumb-item::before { color: var(--bs-secondary-color); }
+
+    /* Карточки действий */
+    .action-card {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      border-left: 4px solid var(--bs-primary);
+    }
+    .action-card .card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .action-card .card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0;
+      font-weight: 600;
+    }
+    .action-card .card-text {
+      color: var(--bs-secondary-color);
+      flex-grow: 1;
+    }
+    .action-card .btn {
+      align-self: flex-start;
+      margin-top: auto;
+    }
+
+    /* Блок с подсказкой */
+    .tip-card {
+      background-color: rgba(var(--bs-primary-rgb), 0.08);
+      border: 1px solid rgba(var(--bs-primary-rgb), 0.2);
+      border-left: 4px solid var(--bs-primary);
+    }
+    .tip-card .icon { color: var(--bs-primary); }

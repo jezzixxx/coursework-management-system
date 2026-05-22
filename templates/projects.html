@@ -1,83 +1,238 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru" data-bs-theme="auto">
 <head>
-    <title>Проекты</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <title>Проекты | Курсовые проекты</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+        <link rel="stylesheet" href="/static/css/custom.css">
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">Курсовые проекты</a>
-            <div class="d-flex">
-                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
-                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/dashboard">КУРСОВЫЕ</a>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small">{{.user.FullName}} <span class="badge bg-light text-dark border">{{.user.Role}}</span></span>
+        <a href="/logout" class="btn btn-outline-secondary btn-sm">Выход</a>
+      </div>
+    </div>
+  </nav>
+    
+    <div class="container mt-4">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb bg-transparent p-0 mb-0">
+                <li class="breadcrumb-item"><a href="/dashboard">Главная</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Проекты</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+            <h1 class="h4 fw-bold mb-0">Все проекты</h1>
+            <a href="/projects/create" class="btn btn-primary btn-sm">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+                Создать проект
+            </a>
+        </div>
+
+        <!-- 🔍 Фильтры -->
+        <div class="page-card mb-4 p-3">
+            <form method="GET" action="/projects" class="row g-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label fw-medium small">Год</label>
+                    <select name="year" class="form-select form-select-sm">
+                        <option value="">Все годы</option>
+                        {{range .years}}
+                        <option value="{{.}}" {{if eq . $.filterYear}}selected{{end}}>{{.}}</option>
+                        {{end}}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-medium small">Студент</label>
+                    <input type="text" name="student" class="form-control form-control-sm" placeholder="ФИО или логин" value="{{.filterStudent}}" autocomplete="off">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-medium small">Название</label>
+                    <input type="text" name="title" class="form-control form-control-sm" placeholder="Поиск по названию" value="{{.filterTitle}}" autocomplete="off">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-medium small">Статус</label>
+                    <select name="status" class="form-select form-select-sm">
+                        <option value="">Все статусы</option>
+                        <option value="new" {{if eq $.filterStatus "new"}}selected{{end}}>Новый</option>
+                        <option value="in_progress" {{if eq $.filterStatus "in_progress"}}selected{{end}}>В работе</option>
+                        <option value="review" {{if eq $.filterStatus "review"}}selected{{end}}>На проверке</option>
+                        <option value="approved" {{if eq $.filterStatus "approved"}}selected{{end}}>Утверждён</option>
+                        <option value="rejected" {{if eq $.filterStatus "rejected"}}selected{{end}}>Отклонён</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+                        Найти
+                    </button>
+                    <a href="/projects" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+                </div>
+            </form>
+        </div>
+        
+        <div class="page-card p-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Название</th>
+                            <th>Статус</th>
+                            <th>Прогресс</th>
+                            <th>Исполнители</th>
+                            <th class="text-end">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .projects}}
+                        <tr>
+                            <td class="text-muted small">{{.ID}}</td>
+                            <td class="fw-medium">{{.Title}}</td>
+                            <td>
+                                <span class="status-badge">
+                                    {{if eq .CurrentStatus "new"}}Новый
+                                    {{else if eq .CurrentStatus "in_progress"}}В работе
+                                    {{else if eq .CurrentStatus "review"}}На проверке
+                                    {{else if eq .CurrentStatus "approved"}}Утверждён
+                                    {{else if eq .CurrentStatus "rejected"}}Отклонён
+                                    {{else}}{{.CurrentStatus}}{{end}}
+                                </span>
+                            </td>
+<td>
+    <div class="progress" style="height: 6px;">
+        <div class="progress-bar bg-primary" role="progressbar" 
+             style="width: {{.ProgressPercent}}%"
+             aria-valuenow="{{.ProgressPercent}}" aria-valuemin="0" aria-valuemax="100">
+        </div>
+    </div>
+    <small class="text-muted">{{.ProgressFilled}}/{{.ProgressTotal}} ({{.ProgressPercent}}%)</small>
+</td>
+<td>
+    {{range $index, $member := .Members}}{{if $index}}, {{end}}<span class="member-badge">{{$member.FullName}}</span>{{end}}
+    {{if not .Members}}<span class="text-muted small">—</span>{{end}}
+</td>
+                            <td class="text-end">
+                                <div class="action-btns justify-content-end">
+                                    <a href="/project/{{.ID}}" class="btn btn-outline-primary btn-sm">
+                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="none" stroke-width="2"/></svg>
+                                        Просмотр
+                                    </a>
+                                    <a href="/projects/{{.ID}}/add-member" class="btn btn-outline-secondary btn-sm">
+                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" fill="none" stroke-width="2"/><circle cx="9" cy="7" r="4" fill="none" stroke-width="2"/><path d="M19 8v6M22 11h-6" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+                                        Участник
+                                    </a>
+                                        <a href="/projects/{{.ID}}/edit" class="btn btn-outline-secondary btn-sm">
+                                        Редактировать
+                                    </a>
+                                    <button class="btn btn-danger btn-sm btn-delete-project" data-project-id="{{.ID}}" data-project-title="{{.Title}}" title="Удалить проект">
+                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" fill="none" stroke-width="2" stroke-linecap="round"/><path d="M10 11v6M14 11v6" stroke-width="2" stroke-linecap="round"/></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {{else}}
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <p class="mb-2">Проектов не найдено</p>
+                                <a href="/projects">Сбросить фильтры</a> или <a href="/projects/create">создать новый</a>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
             </div>
         </div>
-    </nav>
-    <div class="container mt-4">
-        <h1>Все проекты</h1>
-        <a href="/projects/create" class="btn btn-primary mb-3">+ Создать проект</a>
-        <a href="/admin" class="btn btn-secondary mb-3">← Назад в админку</a>
         
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Название</th>
-                    <th>Статус</th>
-                    <th>Исполнители</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .projects}}
-                <tr>
-                    <td>{{.ID}}</td>
-                    <td>{{.Title}}</td>
-                    <td>
-                        <span class="badge bg-info">{{.CurrentStatus}}</span>
-                    </td>
-                    <td>
-                        {{range .Members}}
-                        <span class="badge bg-secondary">{{.FullName}}</span>
-                        {{end}}
-                    </td>
-                    <td>
-                        <a href="/project/{{.ID}}" class="btn btn-sm btn-outline-primary">Просмотр</a>
-                        <a href="/projects/{{.ID}}/add-member" class="btn btn-sm btn-outline-success">➕ Участник</a>
-                        <button class="btn btn-sm btn-danger btn-delete-project" 
-                                data-project-id="{{.ID}}" 
-                                data-project-title="{{.Title}}">
-                            🗑️
-                        </button>
-                    </td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
+        <div class="tip-card p-3 rounded-3 d-flex gap-3 mt-3" style="background-color: rgba(var(--bs-primary-rgb), 0.08); border-left: 4px solid var(--bs-primary);">
+            <svg class="icon mt-1" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke-width="2"/><path d="M12 16v-4M12 8h.01" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+            <div class="small"><span class="fw-medium">Подсказка:</span> Нажмите «Просмотр», чтобы увидеть детали проекта и управлять этапами.</div>
+        </div>
     </div>
+
+    <!-- 🔹 МОДАЛКА -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form id="deleteConfirmForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Подтвердите удаление</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">Вы удаляете проект:<br><strong class="text-danger" id="deleteProjectTitle"></strong></p>
+                        <div class="alert alert-warning small py-2">
+                            <svg class="icon me-1" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" fill="none" stroke-width="2"/><path d="M12 9v4M12 17h.01" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+                            Все файлы проекта будут безвозвратно удалены.
+                        </div>
+                        <label for="confirmPassword" class="form-label fw-medium small">Введите ваш пароль</label>
+                        <input type="password" class="form-control" id="confirmPassword" name="password" placeholder="••••••••" autocomplete="current-password" required minlength="6">
+                        <input type="hidden" id="deleteProjectId" name="project_id">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+                            Удалить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    document.querySelectorAll('.btn-delete-project').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var projectId = this.getAttribute('data-project-id');
-            var projectTitle = this.getAttribute('data-project-title');
-            
-            if (!confirm('⚠️ Удалить проект "' + projectTitle + '"?\n\nВсе файлы будут безвозвратно удалены!')) return;
-            
-            fetch('/admin/projects/delete', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'project_id=' + projectId
+    let deleteModal = null;
+    let pendingDelete = null;
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalEl = document.getElementById('deleteConfirmModal');
+        if (modalEl) {
+            deleteModal = new bootstrap.Modal(modalEl);
+            modalEl.addEventListener('hidden.bs.modal', function() {
+                pendingDelete = null;
+                document.getElementById('confirmPassword').value = '';
+            });
+        }
+        document.querySelectorAll('.btn-delete-project').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                pendingDelete = { projectId: this.dataset.projectId, projectTitle: this.dataset.projectTitle };
+                document.getElementById('deleteProjectTitle').textContent = pendingDelete.projectTitle;
+                document.getElementById('confirmPassword').value = '';
+                document.getElementById('confirmPassword').focus();
+                if (deleteModal) deleteModal.show();
+            });
+        });
+        document.getElementById('deleteConfirmForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const password = document.getElementById('confirmPassword').value;
+            const { projectId } = pendingDelete || {};
+            if (!projectId) { alert('❌ Ошибка: не выбран проект'); return; }
+            fetch('/admin/confirm-password-json', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' }, body: 'password=' + encodeURIComponent(password) })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    return fetch('/admin/projects/delete', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' }, body: 'project_id=' + encodeURIComponent(projectId) });
+                }
+                throw new Error(data.error || 'Неверный пароль');
             })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert('Проект удалён!');
+                    if (deleteModal) deleteModal.hide();
+                    alert('✅ Проект удалён!');
                     location.reload();
-                } else {
-                    alert('Ошибка: ' + data.error);
-                }
-            });
+                } else { alert('❌ Ошибка: ' + data.error); }
+            })
+            .catch(err => { console.error('Delete error:', err); alert('❌ ' + err.message); document.getElementById('confirmPassword').focus(); document.getElementById('confirmPassword').select(); });
         });
     });
     </script>

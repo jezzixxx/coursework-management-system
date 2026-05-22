@@ -73,3 +73,23 @@ func ShowChecklist(c *gin.Context) {
 		"filledRequired":   filledRequired,
 	})
 }
+
+func CalculateProjectProgress(projectID uint) (int, int, int, error) {
+	required := config.DefaultRequiredDocuments
+	total := len(required)
+
+	var completedCount int64
+	err := config.DB.Model(&models.ProjectDocumentType{}).
+		Where("project_id = ? AND type_code IN ? AND is_complete = ?", projectID, required, true).
+		Count(&completedCount).Error
+
+	if err != nil {
+		return 0, total, 0, err
+	}
+
+	percent := 0
+	if total > 0 {
+		percent = int(float64(completedCount) / float64(total) * 100)
+	}
+	return int(completedCount), total, percent, nil
+}

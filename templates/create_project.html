@@ -2,51 +2,146 @@
 <html>
 <head>
     <title>Создать проект</title>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/custom.css">
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">Курсовые проекты</a>
-            <div class="d-flex">
-                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
-                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
-            </div>
-        </div>
-    </nav>
+    <!-- Навигация -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/dashboard">КУРСОВЫЕ</a>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small">{{.user.FullName}} <span class="badge bg-light text-dark border">{{.user.Role}}</span></span>
+        <a href="/logout" class="btn btn-outline-secondary btn-sm">Выход</a>
+      </div>
+    </div>
+  </nav>
+
+    <!-- Основной контент -->
     <div class="container mt-4">
-        <h1>Создать новый проект</h1>
-        
+                <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb bg-transparent p-0 mb-0">
+                <li class="breadcrumb-item"><a href="/dashboard">Главная</a></li>
+                <li class="breadcrumb-item"><a href="/projects">Проекты</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Создать проект</li>
+            </ol>
+        </nav>
+                <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+            <h1 class="h4 fw-bold mb-0">Создать новый проект</h1>
+        </div>
         {{if .error}}
         <div class="alert alert-danger">{{.error}}</div>
         {{end}}
-        
         <form action="/projects/create" method="POST" class="card p-4">
+            <!-- Название проекта -->
             <div class="mb-3">
-                <label class="form-label">Название проекта</label>
-                <input type="text" name="title" class="form-control" required>
+                <label class="form-label fw-bold">Название проекта</label>
+                <input type="text" name="title" class="form-control" required placeholder="Введите название">
             </div>
+            
+            <!-- Описание -->
             <div class="mb-3">
-                <label class="form-label">Описание</label>
-                <textarea name="description" class="form-control" rows="3"></textarea>
+                <label class="form-label fw-bold">Описание</label>
+                <textarea name="description" class="form-control" rows="3" placeholder="Опишите проект кратко"></textarea>
             </div>
+            
+            <!-- 🔍 ПАНЕЛЬ ФИЛЬТРАЦИИ (НЕ форма, просто div + JS) -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <strong>Фильтр студентов</strong>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <!-- Год -->
+                        <div class="col-md-3">
+                            <label class="form-label small">Год</label>
+                            <select id="filterYear" class="form-select form-select-sm">
+                                <option value="">Все годы</option>
+                                {{range .availableYears}}
+                                <option value="{{.}}" {{if eq $.filterYear (printf "%d" .)}}selected{{end}}>
+                                    {{.}}
+                                </option>
+                                {{end}}
+                            </select>
+                        </div>
+                        
+                        <!-- Поиск -->
+                        <div class="col-md-6">
+                            <label class="form-label small">Поиск по логину или ФИО</label>
+                            <input type="text" id="filterSearch" class="form-control form-control-sm" 
+                                   placeholder="Введите часть имени..." 
+                                   value="{{.filterSearch}}">
+                        </div>
+                        
+                        <!-- Кнопки -->
+                        <div class="col-md-3 d-flex align-items-end gap-2">
+                            <button type="button" onclick="applyFilter()" class="btn btn-primary btn-sm">
+                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+                                Найти</button>
+                            <a href="/projects/create" class="btn btn-outline-secondary btn-sm">Сбросить</a>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Список студентов (внутри POST-формы!) -->
             <div class="mb-3">
-                <label class="form-label">Исполнители (1-2 человека)</label>
+                <label class="form-label fw-bold">Исполнители (1-2 человека)</label>
                 <select name="members" class="form-select" multiple size="5" required>
+                    {{if eq (len .students) 0}}
+                    <option disabled>Студенты не найдены. Измените параметры поиска.</option>
+                    {{else}}
                     {{range .students}}
-                    <option value="{{.ID}}">{{.FullName}} ({{.Group}})</option>
+                    <option value="{{.ID}}">[{{.Year}}] {{.Login}} — {{.FullName}} ({{.Group}})</option>
+                    {{end}}
                     {{end}}
                 </select>
-                <div class="form-text">
-                    Зажмите Ctrl для выбора нескольких (максимум 2 человека)
-                </div>
-                <div class="alert alert-warning mt-2">
-                    ⚠️ Максимальное количество участников: 2 человека
-                </div>
+        <div class="tip-card p-3 rounded-3 d-flex gap-3 mt-3" style="background-color: rgba(var(--bs-primary-rgb), 0.08); border-left: 4px solid var(--bs-primary);">
+            <svg class="icon mt-1" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke-width="2"/><path d="M12 16v-4M12 8h.01" fill="none" stroke-width="2" stroke-linecap="round"/></svg>
+            <div class="small"><span class="fw-medium">Подсказка:</span> Зажмите <kbd>Ctrl</kbd> для выбора нескольких студентов. Максимум 2 человека.</div>
+        </div>
             </div>
-            <button type="submit" class="btn btn-primary">Создать</button>
-            <a href="/projects" class="btn btn-secondary">Отмена</a>
+            
+            <!-- Скрытые поля для сохранения фильтров при ошибке -->
+            <input type="hidden" name="filter_year" value="{{.filterYear}}">
+            <input type="hidden" name="filter_search" value="{{.filterSearch}}">
+            
+            <!-- Кнопки -->
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success">Создать проект</button>
+                <a href="/projects" class="btn btn-secondary"> Отмена</a>
+            </div>
         </form>
     </div>
+
+    <!-- 🚀 JavaScript для фильтрации -->
+    <script>
+    // Применение фильтров (делает GET-запрос с параметрами)
+    function applyFilter() {
+        const year = document.getElementById('filterYear').value;
+        const search = document.getElementById('filterSearch').value;
+        
+        let url = '/projects/create?';
+        if (year) url += 'year=' + encodeURIComponent(year) + '&';
+        if (search) url += 'search=' + encodeURIComponent(search);
+        
+        window.location.href = url;
+    }
+    
+    // Живой поиск (фильтрует список без перезагрузки)
+    document.getElementById('filterSearch').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase();
+        const options = document.querySelectorAll('select[name="members"] option');
+        
+        options.forEach(opt => {
+            const text = opt.textContent.toLowerCase();
+            opt.style.display = text.includes(term) ? '' : 'none';
+        });
+    });
+    </script>
 </body>
 </html>

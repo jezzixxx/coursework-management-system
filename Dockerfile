@@ -8,7 +8,12 @@ RUN apk add --no-cache git
 
 # Copy go mod files
 COPY go.mod go.sum ./
-RUN go mod download
+COPY vendor ./vendor
+
+# 🔧 Добавляем настройки прокси и таймаута
+ENV GOPROXY=off
+ENV GOSUMDB=off
+ENV GOFLAGS=-mod=vendor
 
 # Copy source code
 COPY . .
@@ -17,7 +22,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server/main.go
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.19
 
 WORKDIR /root/
 

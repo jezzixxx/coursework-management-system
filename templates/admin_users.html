@@ -1,120 +1,404 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru" data-bs-theme="auto">
 <head>
-    <title>Управление пользователями</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <title>Управление пользователями | Курсовые проекты</title>
+  
+  <!-- Шрифт Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bs-primary: #10b981;
+      --bs-primary-rgb: 16, 185, 129;
+      --bs-card-border-radius: 1rem;
+      --bs-btn-border-radius: 0.65rem;
+      --bs-body-font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+    }
+
+    :root, [data-bs-theme="light"] {
+      --bs-body-bg: #f8fafc;
+      --bs-body-color: #0f172a;
+      --bs-border-color: #e2e8f0;
+      --bs-card-bg: #ffffff;
+      --bs-secondary-color: #64748b;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root, [data-bs-theme="dark"] {
+        --bs-body-bg: #0f172a;
+        --bs-body-color: #e2e8f0;
+        --bs-border-color: #334155;
+        --bs-card-bg: #1e293b;
+        --bs-secondary-color: #94a3b8;
+      }
+    }
+
+    body { 
+      min-height: 100vh; 
+      display: flex; 
+      flex-direction: column;
+      letter-spacing: -0.01em;
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
+    }
+
+    .form-label { color: var(--bs-body-color) !important; font-weight: 500; }
+    .form-text, .text-muted { color: var(--bs-secondary-color) !important; }
+    .card { background-color: var(--bs-card-bg); border-color: var(--bs-border-color); }
+
+    .btn-primary { --bs-btn-bg: var(--bs-primary); --bs-btn-border-color: var(--bs-primary); --bs-btn-color: #fff; }
+    .btn-primary:hover, .btn-primary:focus { --bs-btn-bg: #059669; --bs-btn-border-color: #059669; }
+
+    .btn-outline-secondary { --bs-btn-color: var(--bs-body-color); --bs-btn-border-color: var(--bs-border-color); }
+    .btn-outline-secondary:hover { --bs-btn-bg: var(--bs-body-color); --bs-btn-color: var(--bs-body-bg); }
+
+    .btn-outline-primary { --bs-btn-color: var(--bs-primary); --bs-btn-border-color: var(--bs-primary); }
+    .btn-outline-primary:hover { --bs-btn-bg: var(--bs-primary); --bs-btn-color: #fff; }
+
+    .btn-danger { --bs-btn-bg: #ef4444; --bs-btn-border-color: #ef4444; --bs-btn-color: #fff; }
+    .btn-danger:hover { --bs-btn-bg: #dc2626; --bs-btn-border-color: #dc2626; }
+
+    .alert-danger { background-color: rgba(220, 53, 69, 0.12); border-color: rgba(220, 53, 69, 0.2); color: var(--bs-body-color); }
+    .alert-success { background-color: rgba(var(--bs-primary-rgb), 0.12); border-color: rgba(var(--bs-primary-rgb), 0.2); color: var(--bs-body-color); }
+
+    .icon {
+      width: 1.25em; height: 1.25em; vertical-align: -0.2em;
+      fill: none; stroke: currentColor; stroke-width: 2;
+      stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;
+    }
+
+    h1, h2, h3, h4, h5, h6, .navbar-brand { letter-spacing: -0.03em; color: var(--bs-body-color); }
+
+    .navbar { background-color: var(--bs-card-bg); border-bottom: 1px solid var(--bs-border-color); }
+    .navbar-brand { color: var(--bs-body-color) !important; }
+
+    .breadcrumb-item a { color: var(--bs-primary); text-decoration: none; }
+    .breadcrumb-item a:hover { text-decoration: underline; }
+    .breadcrumb-item.active { color: var(--bs-secondary-color); }
+    .breadcrumb-item + .breadcrumb-item::before { color: var(--bs-secondary-color); }
+
+    .table {
+      color: var(--bs-body-color); border-color: var(--bs-border-color);
+      --bs-table-bg: transparent;
+      --bs-table-striped-bg: rgba(var(--bs-body-color-rgb), 0.04);
+      --bs-table-hover-bg: rgba(var(--bs-body-color-rgb), 0.06);
+    }
+    .table-bordered th, .table-bordered td { border-color: var(--bs-border-color); color: var(--bs-body-color); }
+    .table thead th {
+      background-color: rgba(var(--bs-body-color-rgb), 0.06);
+      color: var(--bs-body-color); font-weight: 600;
+      border-bottom: 2px solid var(--bs-border-color); white-space: nowrap;
+    }
+    .table tbody tr { transition: background-color 0.2s ease; }
+    .table tbody tr.filtered { display: none; }
+
+    .badge-admin {
+      background-color: rgba(var(--bs-primary-rgb), 0.15);
+      color: var(--bs-primary); font-weight: 500;
+      padding: 0.35em 0.75em; border-radius: 0.5rem;
+    }
+    .badge-student {
+      background-color: rgba(var(--bs-secondary-color), 0.15);
+      color: var(--bs-secondary-color); font-weight: 500;
+      padding: 0.35em 0.75em; border-radius: 0.5rem;
+    }
+
+    .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; border-radius: 0.5rem; }
+
+    /* Панель фильтров */
+    .filters-card {
+      background-color: var(--bs-card-bg);
+      border: 1px solid var(--bs-border-color);
+      border-radius: var(--bs-card-border-radius);
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .filters-card .form-label { font-size: 0.875rem; margin-bottom: 0.25rem; }
+    .filters-card .form-control, .filters-card .form-select {
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      border-color: var(--bs-border-color);
+    }
+    .filters-card .form-control:focus, .filters-card .form-select:focus {
+      border-color: var(--bs-primary);
+      box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+    }
+    .btn-reset-filters {
+      --bs-btn-color: var(--bs-secondary-color);
+      --bs-btn-border-color: var(--bs-border-color);
+    }
+    .btn-reset-filters:hover {
+      --bs-btn-bg: var(--bs-secondary-color);
+      --bs-btn-color: #fff;
+    }
+  </style>
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">Курсовые проекты</a>
-            <div class="d-flex">
-                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
-                <a href="/dashboard" class="btn btn-outline-light btn-sm me-2">🏠 Главная</a>
-                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
-            </div>
-        </div>
+
+  <!-- Навигация -->
+  <nav class="navbar sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/dashboard">КУРСОВЫЕ</a>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small d-none d-sm-block fw-medium">
+          <svg class="icon me-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          {{.user.FullName}} <span class="badge bg-secondary bg-opacity-25">{{.user.Role}}</span>
+        </span>
+        <a href="/logout" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+          <svg class="icon me-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Выход
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-5 flex-grow-1">
+    <!-- Хлебные крошки -->
+    <nav aria-label="breadcrumb" class="mb-4">
+      <ol class="breadcrumb bg-transparent p-0 mb-0 fw-medium">
+        <li class="breadcrumb-item"><a href="/dashboard">Главная</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Пользователи</li>
+      </ol>
     </nav>
-    <div class="container mt-4">
-        <h1>👥 Управление пользователями</h1>
-        
-        <!-- Кнопки навигации -->
-        <div class="mb-3">
-            <a href="/dashboard" class="btn btn-outline-primary">🏠 Главная</a>
-            <a href="/admin" class="btn btn-secondary">← Админ-панель</a>
-            <a href="/download-passwords" class="btn btn-success">📥 Пароли импорта</a>
-            <a href="/admin/download-reset-passwords" class="btn btn-info">📥 Сброшенные пароли</a>
-        </div>
-        
-        {{if .success}}
-        <div class="alert alert-success">{{.success}}</div>
-        {{end}}
-        
-        {{if .error}}
-        <div class="alert alert-danger">{{.error}}</div>
-        {{end}}
-        
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Login</th>
-                    <th>ФИО</th>
-                    <th>Группа</th>
-                    <th>Роль</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .users}}
-                <tr>
-                    <td>{{.ID}}</td>
-                    <td>{{.Login}}</td>
-                    <td>{{.FullName}}</td>
-                    <td>{{.Group}}</td>
-                    <td>
-                        {{if eq .Role "admin"}}
-                        <span class="badge bg-danger">Админ</span>
-                        {{else}}
-                        <span class="badge bg-primary">Студент</span>
-                        {{end}}
-                    </td>
-                    <td>
-                        {{if ne .Role "admin"}}
-                        <button class="btn btn-sm btn-warning btn-reset-password" 
-                                data-user-id="{{.ID}}" 
-                                data-user-login="{{.Login}}"
-                                data-user-full_name="{{.FullName}}">
-                            🔄 Пароль
-                        </button>
-                        <button class="btn btn-sm btn-danger btn-delete-user" 
-                                data-user-id="{{.ID}}" 
-                                data-user-full_name="{{.FullName}}">
-                            🗑️ Удалить
-                        </button>
-                        {{end}}
-                    </td>
-                </tr>
-                {{end}}
-            </tbody>
-        </table>
+
+    <!-- Заголовок и действия -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+      <h1 class="h3 mb-0 fw-bold">
+        <svg class="icon me-2" aria-hidden="true" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Управление пользователями
+      </h1>
+      
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="/import" class="btn btn-primary btn-sm">
+          <svg class="icon me-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Импорт из CSV
+        </a>
+      </div>
     </div>
 
-    <script>
-    // Сброс пароля
+    <!-- Сообщения -->
+    {{if .success}}
+    <div class="alert alert-success d-flex align-items-center gap-2 rounded-3 mb-4" role="alert">
+      <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <span>{{.success}}</span>
+    </div>
+    {{end}}
+
+    {{if .error}}
+    <div class="alert alert-danger d-flex align-items-center gap-2 rounded-3 mb-4" role="alert">
+      <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>{{.error}}</span>
+    </div>
+    {{end}}
+
+    <!-- 🔍 Панель поиска и фильтров -->
+    <div class="filters-card">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-6">
+          <label for="searchInput" class="form-label"> Поиск</label>
+          <input type="text" id="searchInput" class="form-control rounded-3" placeholder="ФИО, логин, группа...">
+        </div>
+        <div class="col-md-3">
+          <label for="yearFilter" class="form-label"> Год поступления</label>
+            <select id="yearFilter" name="year" class="form-select rounded-3">
+            <option value="">Все годы</option>
+            {{if .years}}
+                {{range .years}}
+                <option value="{{.}}" {{if eq $.filterYear (printf "%d" .)}}selected{{end}}>
+                {{.}}
+                </option>
+                {{end}}
+            {{else}}
+                <option disabled>Годы не найдены</option>
+            {{end}}
+            </select>
+        </div>
+        <div class="col-md-3">
+          <button id="resetFilters" class="btn btn-reset-filters w-100 rounded-3">
+            <svg class="icon me-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Сбросить
+          </button>
+        </div>
+      </div>
+      <div class="form-text mt-2">
+        Фильтрация происходит мгновенно. Год определяется по логину (например, <code>ivanov22</code> → 2022) и атрибуту в БД.
+      </div>
+    </div>
+
+    <!-- Таблица пользователей -->
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped mb-0 align-middle" id="usersTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Login</th>
+              <th>ФИО</th>
+              <th>Группа</th>
+              <th>Роль</th>
+              <th class="text-center">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .users}}
+            <tr data-year="{{.Year}}" data-login="{{.Login}}" data-fullname="{{.FullName}}" data-group="{{.Group}}">
+              <td>{{.ID}}</td>
+              <td><code>{{.Login}}</code></td>
+              <td>{{.FullName}}</td>
+              <td>{{.Group}}</td>
+              <td>
+                {{if eq .Role "admin"}}
+                <span class="badge-admin">
+                  <svg class="icon me-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  Админ
+                </span>
+                {{else}}
+                <span class="badge-student">
+                  <svg class="icon me-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                  Студент
+                </span>
+                {{end}}
+              </td>
+              <td class="text-center">
+                {{if ne .Role "admin"}}
+                <div class="d-flex gap-2 justify-content-center">
+                  <!-- 🔑 Кнопка сброса пароля (ясный текст + подсказка) -->
+                  <button type="button" class="btn btn-outline-primary btn-sm btn-reset-password"
+                          title="Сбросить пароль и получить новый"
+                          data-user-id="{{.ID}}"
+                          data-user-login="{{.Login}}"
+                          data-user-full_name="{{.FullName}}">
+                    <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                    Сбросить пароль
+                  </button>
+                  <button type="button" class="btn btn-danger btn-sm btn-delete-user"
+                          title="Удалить пользователя"
+                          data-user-id="{{.ID}}"
+                          data-user-full_name="{{.FullName}}">
+                    <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Удалить
+                  </button>
+                </div>
+                {{else}}
+                <span class="text-muted small">—</span>
+                {{end}}
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Счётчик результатов -->
+    <div class="text-muted small mt-3" id="resultsCount">
+      Показано: <span id="visibleCount">0</span> из <span id="totalCount">0</span>
+    </div>
+  </main>
+
+  <!-- Рабочие обработчики событий -->
+  <script>
+    // 🔍 Фильтрация таблицы (поиск + год)
+    function filterTable() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const year = document.getElementById('yearFilter').value;
+      const rows = document.querySelectorAll('#usersTable tbody tr');
+      let visible = 0;
+      
+      rows.forEach(row => {
+        const login = row.dataset.login.toLowerCase();
+        const fullname = row.dataset.fullname.toLowerCase();
+        const group = row.dataset.group.toLowerCase();
+        const rowYear = row.dataset.year;
+        
+        const matchesSearch = !search || login.includes(search) || fullname.includes(search) || group.includes(search);
+        const matchesYear = !year || rowYear === year;
+        
+        if (matchesSearch && matchesYear) {
+          row.classList.remove('filtered');
+          row.style.display = '';
+          visible++;
+        } else {
+          row.classList.add('filtered');
+          row.style.display = 'none';
+        }
+      });
+      
+      // Обновляем счётчик
+      document.getElementById('visibleCount').textContent = visible;
+      document.getElementById('totalCount').textContent = rows.length;
+    }
+
+    // Слушатели для фильтров
+    document.getElementById('searchInput').addEventListener('input', filterTable);
+    document.getElementById('yearFilter').addEventListener('change', filterTable);
+    document.getElementById('resetFilters').addEventListener('click', function() {
+      document.getElementById('searchInput').value = '';
+      document.getElementById('yearFilter').value = '';
+      filterTable();
+    });
+
+    // Инициализация счётчика при загрузке
+    document.addEventListener('DOMContentLoaded', function() {
+      const rows = document.querySelectorAll('#usersTable tbody tr');
+      document.getElementById('totalCount').textContent = rows.length;
+      document.getElementById('visibleCount').textContent = rows.length;
+    });
+
+    // 🔑 Сброс пароля
     document.querySelectorAll('.btn-reset-password').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var userId = this.getAttribute('data-user-id');
             var login = this.getAttribute('data-user-login');
             var userName = this.getAttribute('data-user-full_name');
             
-            if (!confirm('Сбросить пароль для ' + userName + '?')) return;
+            if (!confirm('Сбросить пароль для ' + userName + '?\n\nСтарый пароль будет утрачен.')) return;
             
             fetch('/admin/users/reset-password', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: 'user_id=' + userId
+                body: 'user_id=' + encodeURIComponent(userId)
             })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert('Новый пароль для ' + data.login + ':\n' + data.password + '\n\nСохраните и передайте пользователю!');
+                    // Авто-скачивание, если есть
+                    if (data.autoDownload) {
+                        const a = document.createElement('a');
+                        a.href = data.autoDownload;
+                        a.download = data.downloadName || 'passwords.csv';
+                        a.style.display = 'none';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }
                 } else {
                     alert('Ошибка: ' + data.error);
                 }
+            })
+            .catch(err => {
+                alert('❌ Ошибка сети: ' + err);
+                console.error(err);
             });
         });
     });
 
-    // Удаление пользователя
+    // 🗑️ Удаление пользователя
     document.querySelectorAll('.btn-delete-user').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var userId = this.getAttribute('data-user-id');
             var userName = this.getAttribute('data-user-full_name');
             
-            if (!confirm('⚠️ Удалить пользователя ' + userName + '?')) return;
+            if (!confirm('⚠️ Удалить пользователя ' + userName + '?\n\nЭто действие нельзя отменить.')) return;
             
-            // Сначала пробуем подтвердить пароль (если нужно)
             checkAndDelete(userId, userName);
         });
     });
@@ -127,12 +411,11 @@
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             },
-            body: 'user_id=' + userId
+            body: 'user_id=' + encodeURIComponent(userId)
         })
         .then(r => r.json())
         .then(data => {
             if (data.reauth_required) {
-                // Требуется подтверждение пароля
                 showReauthModal(userId, userName, data.redirect);
             } else if (data.success) {
                 alert('✅ Пользователь удалён');
@@ -142,18 +425,15 @@
             }
         })
         .catch(err => {
-            // Если получили HTML вместо JSON
             alert('❌ Ошибка сети. Попробуйте обновить страницу.');
             console.error(err);
         });
     }
 
     function showReauthModal(userId, userName, redirectUrl) {
-        // Показываем модальное окно для ввода пароля
         var password = prompt('⚠️ Требуется подтверждение пароля администратора:\n\nВведите ваш пароль для удаления ' + userName);
         if (!password) return;
         
-        // Отправляем пароль на подтверждение
         fetch('/admin/confirm-password-json', {
             method: 'POST',
             headers: {
@@ -165,7 +445,6 @@
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                // Пароль подтверждён, пробуем удалить снова
                 checkAndDelete(userId, userName);
             } else {
                 alert('❌ Неверный пароль');
@@ -175,6 +454,8 @@
             alert('❌ Ошибка подтверждения пароля');
         });
     }
-    </script>
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
