@@ -1,60 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>{{.project.Title}}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали проекта</title>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/custom.css">
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">Курсовые проекты</a>
-            <div class="d-flex">
-                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
-                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
-            </div>
-        </div>
-    </nav>
+    <!-- Навигация -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/dashboard">КУРСОВЫЕ</a>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small">{{.user.FullName}} <span class="badge bg-light text-dark border">{{.user.Role}}</span></span>
+        <a href="/logout" class="btn btn-outline-secondary btn-sm">Выход</a>
+      </div>
+    </div>
+  </nav>
+
     <div class="container mt-4">
-        <!-- Кнопки навигации -->
-        <div class="mb-3">
-            <a href="/dashboard" class="btn btn-outline-primary">🏠 Главная</a>
-            <a href="/my-projects" class="btn btn-secondary">← Назад к списку</a>
-        </div>
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/dashboard">Главная</a></li>
+                {{if eq .user.Role "admin"}}
+                <li class="breadcrumb-item"><a href="/projects">Проекты</a></li>
+                {{end}}
+                <li class="breadcrumb-item active">Просмотр</li>
+            </ol>
+        </nav>
         
         <!-- Карточка проекта -->
         <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header">
                 <h4 class="mb-0">{{.project.Title}}</h4>
             </div>
             <div class="card-body">
                 <p class="card-text">{{.project.Description}}</p>
                 <div class="mb-3">
-                    <span class="badge bg-secondary fs-6">ID: {{.project.ID}}</span>
-                    <span class="badge bg-info fs-6">Статус: 
-                        {{if eq .project.CurrentStatus "new"}}Новый
-                        {{else if eq .project.CurrentStatus "in_progress"}}В работе
-                        {{else if eq .project.CurrentStatus "review"}}На проверке
-                        {{else if eq .project.CurrentStatus "approved"}}Принят
-                        {{else if eq .project.CurrentStatus "rejected"}}На доработке
-                        {{else}}{{.project.CurrentStatus}}{{end}}
-                    </span>
-                </div>
-                
-                <div class="d-flex gap-2 mb-3">
-                    <a href="/project/{{.project.ID}}/files" class="btn btn-primary">📁 Файлы проекта</a>
-                    <a href="/project/{{.project.ID}}/checklist" class="btn btn-info">📋 Чеклист</a>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Статус проекта (только для админа) -->
-        {{if eq .user.Role "admin"}}
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">📊 Управление статусом</h5>
-            </div>
-            <div class="card-body">
+                    {{if eq .user.Role "admin"}}
                 <form action="/admin/projects/update-status" method="POST" class="d-inline">
+                    <h5> Статус проекта</h5>
                     <input type="hidden" name="project_id" value="{{.project.ID}}">
                     <select name="status" class="form-select d-inline w-auto">
                         <option value="new" {{if eq .project.CurrentStatus "new"}}selected{{end}}>Новый</option>
@@ -65,36 +54,35 @@
                     </select>
                     <button type="submit" class="btn btn-primary btn-sm">Изменить статус</button>
                 </form>
+        {{else}}
+                    <span class="badge bg-primary fs-6">Статус: 
+                        {{if eq .project.CurrentStatus "new"}}Новый
+                        {{else if eq .project.CurrentStatus "in_progress"}}В работе
+                        {{else if eq .project.CurrentStatus "review"}}На проверке
+                        {{else if eq .project.CurrentStatus "approved"}}Принят
+                        {{else if eq .project.CurrentStatus "rejected"}}На доработке
+                        {{else}}{{.project.CurrentStatus}}{{end}}
+                    </span>
+                    {{end}}
+                </div>
+                    <a href="/project/{{.project.ID}}/files" class="btn btn-mine">Файлы проекта</a>
             </div>
         </div>
-        {{end}}
         
         <!-- Исполнители -->
-        <div class="card mb-4">
             <div class="card-header">
-                <h5>👥 Исполнители ({{len .project.Members}} / 2)</h5>
-            </div>
-            <div class="card-body">
+                <h5> Исполнители:</h5>
                 <ul class="list-group mb-3">
                     {{range .project.Members}}
                     <li class="list-group-item">{{.FullName}} ({{.Group}})</li>
                     {{end}}
                 </ul>
-                
-                {{if eq .user.Role "admin"}}
-                    {{if lt (len .project.Members) 2}}
-                    <a href="/projects/{{.project.ID}}/add-member" class="btn btn-success btn-sm">➕ Добавить участника</a>
-                    {{else}}
-                    <span class="badge bg-danger">Лимит достигнут (2/2)</span>
-                    {{end}}
-                {{end}}
-            </div>
-        </div>
+            </div>  
         
         <!-- Комментарии -->
         <div class="card">
             <div class="card-header">
-                <h5>💬 Комментарии</h5>
+                <h5> Комментарии</h5>
             </div>
             <div class="card-body">
                 <!-- Форма добавления -->
@@ -130,6 +118,5 @@
                 {{end}}
             </div>
         </div>
-    </div>
 </body>
 </html>

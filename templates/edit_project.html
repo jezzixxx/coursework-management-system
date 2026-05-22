@@ -1,0 +1,96 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактировать проект</title>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/custom.css">
+</head>
+<body>
+    <!-- Навигация -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/dashboard">КУРСОВЫЕ</a>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small">{{.user.FullName}} <span class="badge bg-light text-dark border">{{.user.Role}}</span></span>
+        <a href="/logout" class="btn btn-outline-secondary btn-sm">Выход</a>
+      </div>
+    </div>
+  </nav>
+    
+    <div class="container mt-4">
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/dashboard">Главная</a></li>
+                <li class="breadcrumb-item"><a href="/projects">Проекты</a></li>
+                <li class="breadcrumb-item active">Редактировать проект</li>
+            </ol>
+        </nav>
+        <h2>Редактировать проект "{{.project.Title}}"</h2>
+        
+        {{if .error}}
+        <div class="alert alert-danger">{{.error}}</div>
+        {{end}}
+        
+        <form method="POST" action="/projects/{{.project.ID}}/edit">
+            <!-- Название -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Название проекта</label>
+                <input type="text" 
+                       name="title" 
+                       class="form-control form-control-lg" 
+                       value="{{.project.Title}}" 
+                       required
+                       placeholder="Введите название...">
+                <div class="form-text">Максимальная длина: 255 символов</div>
+            </div>
+            
+            <!-- Описание -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">Описание</label>
+                <textarea name="description" 
+                          class="form-control" 
+                          rows="8"
+                          placeholder="Введите описание проекта (поддерживаются переносы строк)...">{{.project.Description}}</textarea>
+                <div class="form-text">
+                    💡 Поддерживаются переносы строк. 
+                    Используйте <kbd>Shift+Enter</kbd> для новой строки внутри поля.
+                </div>
+            </div>
+            
+            <!-- Информация о проекте (только для просмотра) -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Информация о проекте</h6>
+                    <p class="card-text mb-1">
+                        <strong>Статус:</strong> 
+                        <span class="badge bg-secondary">{{.project.CurrentStatus}}</span>
+                    </p>
+                    <p class="card-text mb-1">
+                        <strong>Участники:</strong>
+                        {{range .project.Members}}
+                            <span class="badge bg-primary me-1">{{.FullName}}</span>
+                        {{else}}
+                            <span class="text-muted">Нет участников</span>
+                        {{end}}
+                    </p>
+                    <p class="card-text mb-0">
+                        <strong>Создан:</strong> {{.project.CreatedAt.Format "02.01.2006"}}
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Кнопки -->
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm"> Сохранить изменения</button>
+                <a href="/projects" class="btn btn-secondary btn-sm"> Отмена</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

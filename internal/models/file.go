@@ -5,15 +5,17 @@ import "time"
 type File struct {
 	ID          uint   `gorm:"primaryKey"`
 	ProjectID   uint   `gorm:"not null;index"`
-	StorageUUID string `gorm:"uniqueIndex;not null;size:36"` // Имя на диске (UUID)
-	DisplayName string `gorm:"not null;size:255"`            // Имя для показа
-	FileType    string `gorm:"not null;size:50"`             // report, source, docs
-	MimeType    string `gorm:"size:100"`                     // application/pdf
+	StorageUUID string `gorm:"uniqueIndex;not null;size:36"`
+	DisplayName string `gorm:"not null;size:255"`
+	LogicalName string `gorm:"size:100;index"` // 🔹 НОВОЕ: группирует версии одного документа
+	FileType    string `gorm:"not null;size:50"`
+	MimeType    string `gorm:"size:100"`
 	Size        int64
-	Version     int  `gorm:"not null"`
-	IsActive    bool `gorm:"default:true"` // Актуальная версия
+	Version     int  `gorm:"not null;default:1"`
+	IsActive    bool `gorm:"default:true"`
 	ValidFrom   time.Time
-	ValidTo     time.Time // 2999-12-31 для актуальной версии
-	UploadedBy  uint      `gorm:"not null"`
+	ValidTo     time.Time
+	UploadedBy  uint `gorm:"not null"`
 	UploadedAt  time.Time
+	Status      string `gorm:"size:20;default:'uploaded'"`
 }

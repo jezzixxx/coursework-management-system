@@ -16,11 +16,9 @@ func CreateAdmin() error {
 	result := config.DB.Where("role = ?", "admin").First(&admin)
 
 	if result.Error == nil {
-		// Админ уже есть
 		return nil
 	}
 
-	// Создаём админа
 	admin = models.User{
 		Login:              "admin",
 		FullName:           "Administrator",
@@ -28,10 +26,9 @@ func CreateAdmin() error {
 		Year:               0,
 		Group:              "",
 		IsActive:           true,
-		MustChangePassword: false, // ← Админу не нужно менять пароль
+		MustChangePassword: false,
 	}
 
-	// Пароль по умолчанию - admin123 (первый вход)
 	err := admin.SetPassword("admin123")
 	if err != nil {
 		return err
@@ -40,11 +37,9 @@ func CreateAdmin() error {
 	return config.DB.Create(&admin).Error
 }
 
-// ImportUsersFromCSV импортирует студентов из CSV файла
-// Ожидаемый формат CSV:
-// Фамилия,Имя,Отчество,Год,Группа
-// Иванов,Иван,Иванович,22,ИВТ-22-01
-func ImportUsersFromCSV(filePath string) ([]models.User, error) {
+// ImportUsersFromCSV импортирует студентов и записывает пароли в предоставленный writer
+// Возвращает список созданных пользователей и ошибку
+func ImportUsersFromCSV(filePath string, passwordsWriter io.Writer) ([]models.User, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -52,7 +47,6 @@ func ImportUsersFromCSV(filePath string) ([]models.User, error) {
 	defer file.Close()
 
 	reader := csv.NewReader(file)
-
 	// Пропускаем заголовок
 	_, err = reader.Read()
 	if err != nil {
@@ -60,7 +54,7 @@ func ImportUsersFromCSV(filePath string) ([]models.User, error) {
 	}
 
 	var users []models.User
-	var passwords []string // Сохраняем пароли для экспорта
+	var passwords []string
 	rowNumber := 1
 
 	for {
@@ -71,19 +65,17 @@ func ImportUsersFromCSV(filePath string) ([]models.User, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		// Ожидаем: Фамилия, Имя, Отчество, Год, Группа
 		if len(record) < 5 {
-			continue // Пропускаем строки с недостаточным количеством полей
+			continue
 		}
 
+		// ... (парсинг, генерация логина/пароля, создание пользователя) ...
 		lastname := record[0]
 		firstname := record[1]
 		patronymic := record[2]
-		year := 22         // По умолчанию, можно парсить из record[3]
-		group := record[4] // ← НОВОЕ: читаем группу
+		year := 22
+		group := record[4]
 
-		// Парсим год, если он есть в CSV
 		if len(record[3]) > 0 {
 			fmt.Sscanf(record[3], "%d", &year)
 		}
@@ -109,28 +101,44 @@ func ImportUsersFromCSV(filePath string) ([]models.User, error) {
 			return nil, err
 		}
 
-		// Сохраняем пароль для последующего экспорта
+		// После успешного создания пользователя:
 		passwords = append(passwords, password)
-
 		err = config.DB.Create(&user).Error
 		if err != nil {
 			return nil, err
 		}
-
 		users = append(users, user)
 		rowNumber++
 	}
 
-	// Сохраняем пароли во временный файл для экспорта
-	err = exportPasswords(users, passwords, "exported_passwords.csv")
-	if err != nil {
-		return nil, err
+	// 🔥 Ключевое изменение: пишем пароли в переданный writer, а не в файл!
+	if passwordsWriter != nil {
+		if err := exportPasswordsToWriter(users, passwords, passwordsWriter); err != nil {
+			return nil, fmt.Errorf("ошибка записи паролей: %w", err)
+		}
 	}
 
 	return users, nil
 }
 
-// exportPasswords создаёт CSV файл с логинами и паролями для раздачи
+// exportPasswordsToWriter — приватная функция, пишет CSV в любой io.Writer
+func exportPasswordsToWriter(users []models.User, passwords []string, w io.Writer) error {
+	writer := csv.NewWriter(w)
+	defer writer.Flush()
+
+	writer.Write([]string{"Login", "FullName", "Group", "Password"})
+	for i, user := range users {
+		writer.Write([]string{
+			user.Login,
+			user.FullName,
+			user.Group,
+			passwords[i],
+		})
+	}
+	return nil
+}
+
+// exportPasswords создаёт CSV файл с логинами и паролями (приватная функция)
 func exportPasswords(users []models.User, passwords []string, outputPath string) error {
 	file, err := os.Create(outputPath)
 	if err != nil {
@@ -141,16 +149,14 @@ func exportPasswords(users []models.User, passwords []string, outputPath string)
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	// Заголовок
 	writer.Write([]string{"Login", "FullName", "Group", "Password"})
 
-	// Данные
 	for i, user := range users {
 		writer.Write([]string{
 			user.Login,
 			user.FullName,
 			user.Group,
-			passwords[i],
+			passwords[i], // ← Берём из слайса, НЕ из модели!
 		})
 	}
 

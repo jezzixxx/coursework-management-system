@@ -3,12 +3,14 @@ package handlers
 import (
 	"coursework/internal/config"
 	"coursework/internal/models"
+	"coursework/internal/service"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -152,26 +154,50 @@ var allowedMimeTypes = map[string]bool{
 	"model/stl":            true,
 }
 
-// ShowProjectFiles показывает файлы проекта
 func ShowProjectFiles(c *gin.Context) {
 	user, _ := c.Get("currentUser")
-	projectID := c.Param("id")
+	idStr := c.Param("id")
 
-	// Проверяем доступ к проекту
-	if !checkProjectAccess(c, projectID) {
-		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"user":  user,
-			"error": "Доступ к этому проекту запрещён",
-		})
+	pid, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Неверный ID проекта"})
+		return
+	}
+	if !checkProjectAccess(c, idStr) {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{"user": user, "error": "Доступ запрещён"})
 		return
 	}
 
 	var project models.Project
-	config.DB.Preload("Members").Preload("Files").First(&project, projectID)
+	config.DB.Preload("Members").Preload("Files").First(&project, pid)
+
+	// 1. Группируем АКТИВНЫЕ файлы по FileType
+	grouped := make(map[string][]models.File)
+	for _, f := range project.Files {
+		if f.IsActive {
+			grouped[f.FileType] = append(grouped[f.FileType], f)
+		}
+	}
+
+	// 2. Загружаем флаги завершения типов
+	var docTypes []models.ProjectDocumentType
+	config.DB.Where("project_id = ?", pid).Find(&docTypes)
+	completeMap := make(map[string]bool)
+	for _, dt := range docTypes {
+		completeMap[dt.TypeCode] = dt.IsComplete
+	}
+
+	filled, total, percent, _ := service.CalculateProjectProgress(uint(pid))
 
 	c.HTML(http.StatusOK, "project_files.html", gin.H{
-		"user":    user,
-		"project": project,
+		"user":        user,
+		"project":     project,
+		"grouped":     grouped, // ← map[FileType][]File
+		"completeMap": completeMap,
+		"docLabels":   config.DocumentLabels,
+		"required":    config.DefaultRequiredDocuments,
+		"progress":    gin.H{"filled": filled, "total": total, "percent": percent},
+		"filterType":  c.Query("type"),
 	})
 }
 
@@ -253,25 +279,8 @@ func UploadFile(c *gin.Context) {
 
 	// 1. Проверка расширения
 	ext := strings.ToLower(filepath.Ext(header.Filename))
-	if !allowedExtensions[ext] {
-		c.HTML(http.StatusOK, "project_files.html", gin.H{
-			"user":    user,
-			"error":   "Недопустимый тип файла. Разрешены: pdf, doc, docx, zip, txt",
-			"project": getProject(projectID),
-		})
-		return
-	}
 
-	// 2. Проверка MIME-типа
 	mimeType := header.Header.Get("Content-Type")
-	if !allowedMimeTypes[mimeType] {
-		c.HTML(http.StatusOK, "project_files.html", gin.H{
-			"user":    user,
-			"error":   "Недопустимый формат файла (MIME)",
-			"project": getProject(projectID),
-		})
-		return
-	}
 
 	// 3. Проверка размера (макс 10MB)
 	if header.Size > 10*1024*1024 {
@@ -340,29 +349,30 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	// === ВЕРСИОННОСТЬ (dh) ===
+	// === ВЕРСИОННОСТЬ (исправлено: учитываем LogicalName) ===
+	logicalName := c.PostForm("logical_name")
+	if logicalName == "" {
+		base := strings.TrimSuffix(header.Filename, filepath.Ext(header.Filename))
+		logicalName = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(base), " ", "_"))
+	}
 
-	// Получаем следующую версию
 	var lastVersion int
 	config.DB.Model(&models.File{}).
-		Where("project_id = ? AND file_type = ?", projectID, fileType).
+		Where("project_id = ? AND file_type = ? AND logical_name = ?", projectID, fileType, logicalName).
 		Select("MAX(version)").Scan(&lastVersion)
-
 	newVersion := lastVersion + 1
 
-	// Закрываем предыдущую версию этого типа
+	// Закрываем предыдущую версию ТОЛЬКО ЭТОГО логического документа
 	config.DB.Model(&models.File{}).
-		Where("project_id = ? AND file_type = ? AND is_active = ?", projectID, fileType, true).
-		Updates(map[string]interface{}{
-			"is_active": false,
-			"valid_to":  time.Now(),
-		})
+		Where("project_id = ? AND file_type = ? AND logical_name = ? AND is_active = ?",
+			projectID, fileType, logicalName, true).
+		Updates(map[string]interface{}{"is_active": false, "valid_to": time.Now()})
 
-	// Создаём новую запись файла
 	newFile := models.File{
 		ProjectID:   project.ID,
 		StorageUUID: fileUUID,
-		DisplayName: fmt.Sprintf("%s_%s_v%d%s", user.(models.User).Login, fileType, newVersion, ext),
+		DisplayName: fmt.Sprintf("%s (v%d)", header.Filename, newVersion),
+		LogicalName: logicalName,
 		FileType:    fileType,
 		MimeType:    mimeType,
 		Size:        header.Size,
@@ -372,9 +382,10 @@ func UploadFile(c *gin.Context) {
 		ValidTo:     time.Date(2999, 12, 31, 23, 59, 59, 0, time.UTC),
 		UploadedBy:  user.(models.User).ID,
 		UploadedAt:  time.Now(),
+		Status:      config.FileStatusUploaded,
 	}
-
 	config.DB.Create(&newFile)
+	_ = service.SyncProjectStatus(newFile.ProjectID)
 
 	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/project/%s/files", projectID))
 }
@@ -416,28 +427,27 @@ func DownloadFile(c *gin.Context) {
 	c.FileAttachment(filePath, file.DisplayName)
 }
 
-// ShowFileHistory показывает историю версий файла
+// ShowFileHistory показывает историю версий конкретного логического документа
 func ShowFileHistory(c *gin.Context) {
 	user, _ := c.Get("currentUser")
 	fileID := c.Param("id")
 
 	var file models.File
-	config.DB.First(&file, fileID)
-
-	// Проверяем доступ
-	if !checkProjectAccess(c, fmt.Sprintf("%d", file.ProjectID)) {
-		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"user":  user,
-			"error": "Доступ запрещён",
-		})
+	if err := config.DB.First(&file, fileID).Error; err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"user": user, "error": "Файл не найден"})
 		return
 	}
 
-	// Получаем все версии этого файла
+	if !checkProjectAccess(c, fmt.Sprintf("%d", file.ProjectID)) {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{"user": user, "error": "Доступ запрещён"})
+		return
+	}
+
+	// 🔹 Ищем ВСЕ версии этого логического документа (активные + архивные)
 	var versions []models.File
-	config.DB.Where("project_id = ? AND file_type = ?", file.ProjectID, file.FileType).
-		Order("version DESC").
-		Find(&versions)
+	config.DB.Where("project_id = ? AND file_type = ? AND logical_name = ?",
+		file.ProjectID, file.FileType, file.LogicalName).
+		Order("version DESC").Find(&versions)
 
 	c.HTML(http.StatusOK, "file_history.html", gin.H{
 		"user":     user,
@@ -452,4 +462,105 @@ func getProject(projectID string) models.Project {
 	var project models.Project
 	config.DB.Preload("Members").Preload("Files").First(&project, projectID)
 	return project
+}
+
+// ReviewFile меняет статус файла по решению админа
+func ReviewFile(c *gin.Context) {
+	fileID := c.Param("id")
+	newStatus := c.PostForm("status")
+
+	if newStatus != config.FileStatusAccepted && newStatus != config.FileStatusRevision {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Недопустимый статус"})
+		return
+	}
+
+	var file models.File
+	if err := config.DB.First(&file, fileID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Файл не найден"})
+		return
+	}
+
+	file.Status = newStatus
+	if err := config.DB.Save(&file).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сохранения статуса"})
+		return
+	}
+
+	// 🔄 Автоматически пересчитываем статус проекта
+	if err := service.SyncProjectStatus(file.ProjectID); err != nil {
+		log.Printf("⚠️ Ошибка авто-статуса проекта #%d: %v", file.ProjectID, err)
+	}
+
+	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/project/%d/files", file.ProjectID))
+}
+
+func DeleteFile(c *gin.Context) {
+	user, _ := c.Get("currentUser")
+	fileID := c.Param("id")
+
+	var file models.File
+	if err := config.DB.First(&file, fileID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Файл не найден"})
+		return
+	}
+
+	// Проверка прав: админ или тот, кто загрузил
+	currentUser := user.(models.User)
+	if currentUser.Role != "admin" && file.UploadedBy != currentUser.ID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Нет прав на удаление"})
+		return
+	}
+
+	// 🔹 SOFT DELETE: не стираем физически, а архивируем
+	now := time.Now()
+	config.DB.Model(&file).Updates(map[string]interface{}{
+		"is_active": false,
+		"valid_to":  now,
+	})
+
+	// Пересчитываем статус проекта
+	_ = service.SyncProjectStatus(file.ProjectID)
+
+	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/project/%d/files", file.ProjectID))
+}
+
+// ToggleDocumentTypeComplete переключает флаг "достаточности" типа документа
+func ToggleDocumentTypeComplete(c *gin.Context) {
+	user, _ := c.Get("currentUser")
+
+	// 1. Парсим ID проекта и код типа из URL
+	projectIDStr := c.Param("id")
+	typeCode := c.Param("code")
+
+	projectID, err := strconv.ParseUint(projectIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Неверный ID проекта"})
+		return
+	}
+	pid := uint(projectID)
+
+	// 2. Ищем или создаём запись в БД
+	var docType models.ProjectDocumentType
+	config.DB.Where("project_id = ? AND type_code = ?", pid, typeCode).
+		FirstOrCreate(&docType, models.ProjectDocumentType{
+			ProjectID:  pid,
+			TypeCode:   typeCode,
+			IsComplete: false,
+		})
+
+	// 3. Переключаем флаг
+	admin := user.(models.User)
+	docType.IsComplete = !docType.IsComplete
+	docType.CompletedBy = admin.ID
+	docType.CompletedAt = time.Now()
+	config.DB.Save(&docType)
+
+	// 4. Пересчитываем прогресс
+	filled, total, percent, _ := service.CalculateProjectProgress(pid)
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"isComplete": docType.IsComplete,
+		"progress":   gin.H{"filled": filled, "total": total, "percent": percent},
+	})
 }

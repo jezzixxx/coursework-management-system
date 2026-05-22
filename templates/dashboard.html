@@ -1,31 +1,258 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru" data-bs-theme="auto">
 <head>
-    <title>Панель управления</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <title>Панель управления | Курсовые проекты</title>
+  
+  <!-- Шрифт Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Bootstrap 5.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bs-primary: #10b981;
+      --bs-primary-rgb: 16, 185, 129;
+      --bs-card-border-radius: 1rem;
+      --bs-btn-border-radius: 0.65rem;
+      --bs-body-font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+    }
+
+    :root, [data-bs-theme="light"] {
+      --bs-body-bg: #f8fafc;
+      --bs-body-color: #0f172a;
+      --bs-border-color: #e2e8f0;
+      --bs-card-bg: #ffffff;
+      --bs-secondary-color: #64748b;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root, [data-bs-theme="dark"] {
+        --bs-body-bg: #0f172a;
+        --bs-body-color: #e2e8f0;
+        --bs-border-color: #334155;
+        --bs-card-bg: #1e293b;
+        --bs-secondary-color: #94a3b8;
+      }
+    }
+
+    body { 
+      min-height: 100vh; 
+      display: flex; 
+      flex-direction: column;
+      letter-spacing: -0.01em;
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
+    }
+
+    .card {
+      background-color: var(--bs-card-bg);
+      border-color: var(--bs-border-color);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .btn-primary { 
+      --bs-btn-bg: var(--bs-primary); 
+      --bs-btn-border-color: var(--bs-primary);
+      --bs-btn-color: #fff;
+    }
+    .btn-primary:hover, .btn-primary:focus { 
+      --bs-btn-bg: #059669; 
+      --bs-btn-border-color: #059669;
+    }
+
+    .btn-outline-secondary {
+      --bs-btn-color: var(--bs-body-color);
+      --bs-btn-border-color: var(--bs-border-color);
+    }
+    .btn-outline-secondary:hover {
+      --bs-btn-bg: var(--bs-body-color);
+      --bs-btn-color: var(--bs-body-bg);
+    }
+
+    .icon {
+      width: 1.5em; height: 1.5em; vertical-align: -0.25em;
+      fill: none; stroke: currentColor; stroke-width: 2;
+      stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0;
+    }
+
+    h1, h2, h3, h4, h5, h6, .navbar-brand { 
+      letter-spacing: -0.03em; 
+      color: var(--bs-body-color); 
+    }
+
+    .navbar {
+      background-color: var(--bs-card-bg);
+      border-bottom: 1px solid var(--bs-border-color);
+    }
+    .navbar-brand { color: var(--bs-body-color) !important; }
+
+    .breadcrumb-item a { color: var(--bs-primary); text-decoration: none; }
+    .breadcrumb-item a:hover { text-decoration: underline; }
+    .breadcrumb-item.active { color: var(--bs-secondary-color); }
+    .breadcrumb-item + .breadcrumb-item::before { color: var(--bs-secondary-color); }
+
+    /* Карточки действий */
+    .action-card {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      border-left: 4px solid var(--bs-primary);
+    }
+    .action-card .card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .action-card .card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0;
+      font-weight: 600;
+    }
+    .action-card .card-text {
+      color: var(--bs-secondary-color);
+      flex-grow: 1;
+    }
+    .action-card .btn {
+      align-self: flex-start;
+      margin-top: auto;
+    }
+
+    /* Блок с подсказкой */
+    .tip-card {
+      background-color: rgba(var(--bs-primary-rgb), 0.08);
+      border: 1px solid rgba(var(--bs-primary-rgb), 0.2);
+      border-left: 4px solid var(--bs-primary);
+    }
+    .tip-card .icon { color: var(--bs-primary); }
+  </style>
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">Курсовые проекты</a>
-            <div class="d-flex">
-                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
-                <a href="/dashboard" class="btn btn-outline-light btn-sm me-2">🏠 Главная</a>
-                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
-            </div>
-        </div>
-    </nav>
-    <div class="container mt-4">
-        <h1>Добро пожаловать, {{.user.FullName}}!</h1>
-        <p>Роль: {{.user.Role}}</p>
-        
-        {{if eq .user.Role "admin"}}
-        <a href="/admin" class="btn btn-primary">Админ-панель</a>
-        <a href="/admin/users" class="btn btn-warning">👥 Пользователи</a>
-        {{end}}
-        
-        <a href="/change-password" class="btn btn-secondary">🔑 Сменить пароль</a>
-        <a href="/my-projects" class="btn btn-success">Мои проекты</a>
+
+  <!-- Навигация -->
+  <nav class="navbar sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/dashboard">КУРСОВЫЕ</a>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small d-none d-sm-block fw-medium">
+          <svg class="icon me-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          {{.user.FullName}} <span class="badge bg-secondary bg-opacity-25">{{.user.Role}}</span>
+        </span>
+        <a href="/logout" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+          <svg class="icon me-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Выход
+        </a>
+      </div>
     </div>
+  </nav>
+
+  <main class="container py-5 flex-grow-1">
+    <!-- Хлебные крошки -->
+    <nav aria-label="breadcrumb" class="mb-4">
+      <ol class="breadcrumb bg-transparent p-0 mb-0 fw-medium">
+        <li class="breadcrumb-item active" aria-current="page">Панель управления</li>
+      </ol>
+    </nav>
+
+    <!-- Приветствие -->
+    <div class="mb-5">
+      <h1 class="h3 fw-bold mb-2">
+        <svg class="icon me-2" aria-hidden="true" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Добро пожаловать, {{.user.FullName}}!
+      </h1>
+      <p class="text-muted mb-0">
+        Роль: 
+        {{if eq .user.Role "admin"}}
+        <span class="badge-admin">Администратор</span>
+        {{else}}
+        <span class="badge-student">Студент</span>
+        {{end}}
+      </p>
+    </div>
+
+    <!-- Карточки действий -->
+    <div class="row g-4">
+      
+      <!-- 🔑 Смена пароля -->
+      <div class="col-md-6 col-lg-4">
+        <div class="card action-card p-4">
+          <h3 class="card-title h5">
+            <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Сменить пароль
+          </h3>
+          <p class="card-text">Измените свой пароль для безопасности аккаунта. Рекомендуется обновлять его регулярно.</p>
+          <a href="/change-password" class="btn btn-outline-primary btn-sm">
+            Перейти
+            <svg class="icon ms-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- 📋 Управление проектами -->
+      <div class="col-md-6 col-lg-4">
+        <div class="card action-card p-4">
+          <h3 class="card-title h5">
+            <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Управление проектами
+          </h3>
+          <p class="card-text">Создание, редактирование и отслеживание статусов курсовых работ. Назначение участников и дедлайнов.</p>
+          <a href="/projects" class="btn btn-outline-primary btn-sm">
+            Перейти
+            <svg class="icon ms-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- 👥 Управление пользователями (только для админа) -->
+      {{if eq .user.Role "admin"}}
+      <div class="col-md-6 col-lg-4">
+        <div class="card action-card p-4">
+          <h3 class="card-title h5">
+            <svg class="icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Управление пользователями
+          </h3>
+          <p class="card-text">Импорт студентов из CSV, сброс паролей, деактивация аккаунтов и просмотр списка участников.</p>
+          <a href="/admin/users" class="btn btn-outline-primary btn-sm">
+            Перейти
+            <svg class="icon ms-1" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+      {{end}}
+
+    </div>
+
+  </main>
+
+  <!-- Бейджи для ролей (переиспользуем стили из admin_users.html) -->
+  <style>
+    .badge-admin {
+      background-color: rgba(var(--bs-primary-rgb), 0.15);
+      color: var(--bs-primary);
+      font-weight: 500;
+      padding: 0.35em 0.75em;
+      border-radius: 0.5rem;
+    }
+    .badge-student {
+      background-color: rgba(var(--bs-secondary-color), 0.15);
+      color: var(--bs-secondary-color);
+      font-weight: 500;
+      padding: 0.35em 0.75em;
+      border-radius: 0.5rem;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

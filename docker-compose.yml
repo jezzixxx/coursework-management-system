@@ -16,6 +16,7 @@ services:
       - clamav
     volumes:
       - ./uploads:/root/uploads
+      - ./static:/root/static
     restart: unless-stopped
 
   db:
@@ -30,7 +31,6 @@ services:
       - "5432:5432"
     restart: unless-stopped
 
-  # === ClamAV антивирус (ОТДЕЛЬНЫЙ СЕРВИС) ===
   clamav:
     image: clamav/clamav:stable
     ports:

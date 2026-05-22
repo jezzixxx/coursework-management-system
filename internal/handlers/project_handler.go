@@ -3,6 +3,7 @@ package handlers
 import (
 	"coursework/internal/config"
 	"coursework/internal/models"
+	"coursework/internal/service"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,36 +13,146 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ShowProjects показывает список всех проектов (админ)
+// ShowProjects показывает список всех проектов с фильтрацией (админ)
 func ShowProjects(c *gin.Context) {
 	user, _ := c.Get("currentUser")
 
+	filterYear := c.Query("year")
+	filterStudent := c.Query("student")
+	filterTitle := c.Query("title")
+	filterStatus := c.Query("status")
+
+	query := config.DB.Model(&models.Project{}).Select("projects.*")
+
+	// Простые фильтры по полям проекта
+	if filterTitle != "" {
+		query = query.Where("title LIKE ?", "%"+filterTitle+"%")
+	}
+	if filterStatus != "" {
+		query = query.Where("current_status = ?", filterStatus)
+	}
+
+	// Фильтры по участникам требуют JOIN
+	if filterStudent != "" || filterYear != "" {
+		query = query.
+			Joins("JOIN project_members pm ON pm.project_id = projects.id").
+			Joins("JOIN users u ON u.id = pm.user_id")
+
+		if filterYear != "" {
+			query = query.Where("u.year = ?", filterYear)
+		}
+		if filterStudent != "" {
+			s := "%" + filterStudent + "%"
+			query = query.Where("u.full_name LIKE ? OR u.login LIKE ?", s, s)
+		}
+		// Группируем, чтобы JOIN не размножал строки проектов
+		query = query.Group("projects.id")
+	}
+
 	var projects []models.Project
-	config.DB.Preload("Members").Find(&projects)
+	query.Preload("Members").Find(&projects)
+
+	// Доступные годы для выпадающего списка
+	var years []string
+	config.DB.Model(&models.User{}).
+		Where("role = ? AND is_active = ?", "student", true).
+		Distinct("year").
+		Order("year DESC").
+		Pluck("year", &years)
+
+		// Вспомогательная структура
+	type ProjectWithProgress struct {
+		models.Project
+		ProgressPercent int
+		ProgressFilled  int
+		ProgressTotal   int
+	}
+
+	// Считаем прогресс для каждого проекта
+	projectsWithProgress := make([]ProjectWithProgress, 0, len(projects))
+	for _, p := range projects {
+		filled, total, percent, _ := service.CalculateProjectProgress(p.ID)
+		projectsWithProgress = append(projectsWithProgress, ProjectWithProgress{
+			Project:         p,
+			ProgressPercent: percent,
+			ProgressFilled:  filled,
+			ProgressTotal:   total,
+		})
+	}
 
 	c.HTML(http.StatusOK, "projects.html", gin.H{
-		"user":     user,
-		"projects": projects,
+		"user":          user,
+		"projects":      projectsWithProgress,
+		"filterYear":    filterYear,
+		"filterStudent": filterStudent,
+		"filterTitle":   filterTitle,
+		"filterStatus":  filterStatus,
+		"years":         years,
 	})
 }
 
-// ShowCreateProject показывает страницу создания проекта
 func ShowCreateProject(c *gin.Context) {
 	user, _ := c.Get("currentUser")
+	filterYear := c.Query("year")
+	filterSearch := c.Query("search")
 
-	var students []models.User
-	config.DB.Where("role = ? AND is_active = ?", "student", true).Find(&students)
+	// 👇 Одна строка вместо 15 строк запроса
+	students := GetFilteredStudents(filterYear, filterSearch)
+	years := GetAvailableYears()
 
 	c.HTML(http.StatusOK, "create_project.html", gin.H{
-		"user":     user,
-		"students": students,
+		"user":           user,
+		"students":       students,
+		"filterYear":     filterYear,
+		"filterSearch":   filterSearch,
+		"availableYears": years,
 	})
+}
+
+// GetFilteredStudents возвращает список активных студентов с фильтрацией по году и поиску
+// Не исключает участников проектов — это делается на уровне шаблона или при добавлении
+func GetFilteredStudents(year, search string) []models.User {
+	query := config.DB.Where("role = ? AND is_active = ?", "student", true)
+
+	// Фильтр по году
+	if year != "" {
+		// Пробуем привести к int, если в БД поле year — integer
+		var yearVal int
+		if _, err := fmt.Sscanf(year, "%d", &yearVal); err == nil {
+			query = query.Where("year = ?", yearVal)
+		} else {
+			query = query.Where("year = ?", year)
+		}
+	}
+
+	// Поиск по логину или ФИО
+	if search != "" {
+		term := "%" + search + "%"
+		query = query.Where("login LIKE ? OR full_name LIKE ?", term, term)
+	}
+
+	var students []models.User
+	query.Order("year ASC, login ASC").Find(&students)
+	return students
+}
+
+// GetAvailableYears возвращает список годов для выпадающего списка
+func GetAvailableYears() []int {
+	var years []int
+	config.DB.Model(&models.User{}).
+		Where("role = ? AND is_active = ?", "student", true).
+		Where("year > 0").
+		Distinct("year").
+		Order("year ASC").
+		Pluck("year", &years)
+	return years
 }
 
 // CreateProject создаёт новый проект
 func CreateProject(c *gin.Context) {
 	currentUser, _ := c.Get("currentUser")
-
+	year := c.PostForm("filter_year")
+	search := c.PostForm("filter_search")
 	title := c.PostForm("title")
 	description := c.PostForm("description")
 	memberIDs := c.PostFormArray("members")
@@ -51,7 +162,7 @@ func CreateProject(c *gin.Context) {
 		c.HTML(http.StatusOK, "create_project.html", gin.H{
 			"user":     currentUser,
 			"error":    "Максимальное количество участников: 2 человека",
-			"students": getStudents(),
+			"students": getStudents(year, search),
 		})
 		return
 	}
@@ -60,7 +171,7 @@ func CreateProject(c *gin.Context) {
 		c.HTML(http.StatusOK, "create_project.html", gin.H{
 			"user":     currentUser,
 			"error":    "Проект должен иметь хотя бы одного участника",
-			"students": getStudents(),
+			"students": getStudents(year, search),
 		})
 		return
 	}
@@ -76,7 +187,7 @@ func CreateProject(c *gin.Context) {
 		c.HTML(http.StatusOK, "create_project.html", gin.H{
 			"user":     currentUser,
 			"error":    "Ошибка создания проекта: " + err.Error(),
-			"students": getStudents(),
+			"students": getStudents(year, search),
 		})
 		return
 	}
@@ -85,9 +196,11 @@ func CreateProject(c *gin.Context) {
 	err = os.MkdirAll(folderPath, 0755)
 	if err != nil {
 		c.HTML(http.StatusOK, "create_project.html", gin.H{
-			"user":     currentUser,
-			"error":    "Ошибка создания папки: " + err.Error(),
-			"students": getStudents(),
+			"user":         currentUser,
+			"error":        "Ошибка создания папки: " + err.Error(),
+			"students":     getStudents(year, search),
+			"filterYear":   year,
+			"filterSearch": search,
 		})
 		return
 	}
@@ -159,42 +272,6 @@ func ShowProjectDetails(c *gin.Context) {
 	})
 }
 
-// ShowAddMemberPage показывает страницу добавления участника
-func ShowAddMemberPage(c *gin.Context) {
-	user, _ := c.Get("currentUser")
-	projectID := c.Param("id")
-
-	currentUser := user.(models.User)
-	if currentUser.Role != "admin" {
-		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"user":  user,
-			"error": "Только администратор может добавлять участников",
-		})
-		return
-	}
-
-	var project models.Project
-	config.DB.Preload("Members").First(&project, projectID)
-
-	memberCount := len(project.Members)
-
-	var availableStudents []models.User
-	config.DB.Where("role = ? AND is_active = ?", "student", true).
-		Not("id IN (?)", config.DB.Table("project_members").
-			Select("user_id").
-			Where("project_id = ?", projectID)).
-		Find(&availableStudents)
-
-	c.HTML(http.StatusOK, "add_member.html", gin.H{
-		"user":              user,
-		"project":           project,
-		"availableStudents": availableStudents,
-		"memberCount":       memberCount,
-		"maxMembers":        2,
-		"canAdd":            memberCount < 2,
-	})
-}
-
 // AddMemberToProject добавляет студента в проект
 func AddMemberToProject(c *gin.Context) {
 	user, _ := c.Get("currentUser")
@@ -258,6 +335,59 @@ func AddMemberToProject(c *gin.Context) {
 		"message": "Студент успешно добавлен в проект",
 		"student": student.FullName,
 		"project": project.Title,
+	})
+}
+
+func ShowAddMemberPage(c *gin.Context) {
+	user, _ := c.Get("currentUser")
+	currentUser := user.(models.User)
+
+	// 🔐 Проверка админа — остаётся здесь, это бизнес-логика хэндлера
+	if currentUser.Role != "admin" {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"user":  user,
+			"error": "Только администратор может добавлять участников",
+		})
+		return
+	}
+
+	projectID := c.Param("id")
+	var project models.Project
+	if err := config.DB.Preload("Members").First(&project, projectID).Error; err != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"user": user, "error": "Проект не найден"})
+		return
+	}
+
+	filterYear := c.Query("year")
+	filterSearch := c.Query("search")
+
+	// 👇 Получаем всех студентов (без исключения участников проекта)
+	availableStudents := GetFilteredStudents(filterYear, filterSearch)
+	availableYears := GetAvailableYears()
+
+	// 👇 Собираем IDs уже добавленных участников — для фильтрации в шаблоне
+	joinedIDs := make(map[uint]bool)
+	for _, m := range project.Members {
+		joinedIDs[m.ID] = true
+	}
+
+	// Преобразуем filterYear в int для корректного сравнения в шаблоне
+	var filterYearInt int
+	if filterYear != "" {
+		fmt.Sscanf(filterYear, "%d", &filterYearInt)
+	}
+
+	c.HTML(http.StatusOK, "add_member.html", gin.H{
+		"user":              user,
+		"project":           project,
+		"availableStudents": availableStudents,
+		"availableYears":    availableYears,
+		"joinedIDs":         joinedIDs,
+		"memberCount":       len(project.Members),
+		"maxMembers":        2,
+		"canAdd":            len(project.Members) < 2,
+		"filterYear":        filterYearInt, // 👈 Передаём как int!
+		"filterSearch":      filterSearch,
 	})
 }
 
@@ -330,10 +460,7 @@ func UpdateProjectStatus(c *gin.Context) {
 	project.CurrentStatus = newStatus
 	config.DB.Save(&project)
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Статус обновлён",
-	})
+	c.Redirect(http.StatusSeeOther, "/project/"+projectID)
 }
 
 // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
@@ -393,9 +520,143 @@ func AdminDeleteProject(c *gin.Context) {
 	})
 }
 
-// getStudents возвращает список всех активных студентов
-func getStudents() []models.User {
+// getStudents возвращает список активных студентов (с опциональной фильтрацией)
+func getStudents(year, search string) []models.User {
+	query := config.DB.Where("role = ? AND is_active = ?", "student", true)
+
+	if year != "" {
+		query = query.Where("year = ?", year)
+	}
+	if search != "" {
+		searchTerm := "%" + search + "%"
+		query = query.Where("login LIKE ? OR full_name LIKE ?", searchTerm, searchTerm)
+	}
+
 	var students []models.User
-	config.DB.Where("role = ? AND is_active = ?", "student", true).Find(&students)
+	query.Order("year ASC, login ASC").Find(&students)
 	return students
+}
+
+// ShowEditProject показывает страницу редактирования проекта (только админ)
+func ShowEditProject(c *gin.Context) {
+	user, _ := c.Get("currentUser")
+	currentUser := user.(models.User)
+
+	// Проверка: только админ
+	if currentUser.Role != "admin" {
+		c.HTML(http.StatusForbidden, "error.html", gin.H{
+			"user":  user,
+			"error": "Только администратор может редактировать проекты",
+		})
+		return
+	}
+
+	projectID := c.Param("id")
+	var project models.Project
+	result := config.DB.Preload("Members").First(&project, projectID)
+
+	if result.Error != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"user":  user,
+			"error": "Проект не найден",
+		})
+		return
+	}
+
+	c.HTML(http.StatusOK, "edit_project.html", gin.H{
+		"user":    user,
+		"project": project,
+	})
+}
+
+// UpdateProject обновляет название и описание проекта (только админ)
+func UpdateProject(c *gin.Context) {
+	user, _ := c.Get("currentUser")
+	currentUser := user.(models.User)
+
+	// Проверка: только админ
+	if currentUser.Role != "admin" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Только администратор может редактировать проекты"})
+		return
+	}
+
+	projectID := c.Param("id")
+	title := c.PostForm("title")
+	description := c.PostForm("description")
+
+	// Валидация
+	if title == "" {
+		c.HTML(http.StatusOK, "edit_project.html", gin.H{
+			"user":    user,
+			"project": models.Project{ID: 0}, // заглушка
+			"error":   "Название проекта не может быть пустым",
+		})
+		return
+	}
+
+	var project models.Project
+	result := config.DB.Preload("Members").First(&project, projectID)
+	if result.Error != nil {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"user":  user,
+			"error": "Проект не найден",
+		})
+		return
+	}
+
+	// Обновляем поля
+	project.Title = title
+	project.Description = description
+	config.DB.Save(&project)
+
+	// Редирект обратно на список проектов
+	c.Redirect(http.StatusSeeOther, "/projects")
+}
+func CalculateProjectStatus(projectID uint) string {
+	var files []models.File
+	config.DB.Where("project_id = ? AND is_active = ?", projectID, true).Find(&files)
+
+	if len(files) == 0 {
+		return config.ProjectStatusNew
+	}
+
+	// Есть файлы на проверку?
+	hasPending := false
+	for _, f := range files {
+		if f.Status == config.FileStatusUploaded || f.Status == config.FileStatusUpdated {
+			hasPending = true
+			break
+		}
+	}
+	if hasPending {
+		return config.ProjectStatusNeedsReview
+	}
+
+	// Считаем завершённые типы
+	var completedTypes int64
+	config.DB.Model(&models.ProjectDocumentType{}).
+		Where("project_id = ? AND type_code IN ? AND is_complete = ?",
+			projectID, config.DefaultRequiredDocuments, true).
+		Count(&completedTypes)
+
+	totalTypes := len(config.DefaultRequiredDocuments)
+
+	if int(completedTypes) == totalTypes {
+		return config.ProjectStatusCompleted
+	}
+	if completedTypes > 0 {
+		// Есть хоть один завершённый тип, но не все
+		// Проверяем, есть ли файлы в статусе revision
+		var revisionCount int64
+		config.DB.Model(&models.File{}).
+			Where("project_id = ? AND status = ? AND is_active = ?", projectID, config.FileStatusRevision, true).
+			Count(&revisionCount)
+
+		if revisionCount > 0 {
+			return config.ProjectStatusRevision
+		}
+		return config.ProjectStatusApproved // Частично согласовано
+	}
+
+	return config.ProjectStatusNeedsReview
 }

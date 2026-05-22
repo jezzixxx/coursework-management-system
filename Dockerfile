@@ -8,7 +8,12 @@ RUN apt-get update && apt-get install -y git ca-certificates && rm -rf /var/lib/
 
 # Copy go mod files
 COPY go.mod go.sum ./
-RUN go mod download
+COPY vendor ./vendor
+
+# 🔧 Добавляем настройки прокси и таймаута
+ENV GOPROXY=off
+ENV GOSUMDB=off
+ENV GOFLAGS=-mod=vendor
 
 # Copy source code
 COPY . .
@@ -16,8 +21,8 @@ COPY . .
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server/main.go
 
-# Final stage — Debian Slim (вместо Alpine)
-FROM debian:bookworm-slim
+# Final stage
+FROM alpine:3.19
 
 WORKDIR /root/
 

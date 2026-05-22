@@ -1,121 +1,170 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru" data-bs-theme="auto">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Файлы проекта</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/custom.css">
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">Курсовые проекты</a>
-            <div class="d-flex">
-                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
-                <a href="/dashboard" class="btn btn-outline-light btn-sm me-2">🏠 Главная</a>
-                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
-            </div>
+<nav class="navbar navbar-expand-lg">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/dashboard">КУРСОВЫЕ</a>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted small">{{.user.FullName}} <span class="badge bg-light text-dark border">{{.user.Role}}</span></span>
+            <a href="/logout" class="btn btn-outline-secondary btn-sm">Выход</a>
         </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/dashboard">Главная</a></li>
+            {{if eq .user.Role "admin"}}<li class="breadcrumb-item"><a href="/projects">Проекты</a></li>{{end}}
+            <li class="breadcrumb-item"><a href="/project/{{.project.ID}}">{{.project.Title}}</a></li>
+            <li class="breadcrumb-item active">Файлы</li>
+        </ol>
     </nav>
-    <div class="container mt-4">
-        <h1>Файлы проекта: {{.project.Title}}</h1>
-        <a href="/project/{{.project.ID}}" class="btn btn-secondary mb-3">← Назад к проекту</a>
-        
-        {{if .error}}
-        <div class="alert alert-danger">{{.error}}</div>
-        {{end}}
-        
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5>📤 Загрузить файл</h5>
-            </div>
-            <div class="card-body">
-                <form action="/files/upload" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="project_id" value="{{.project.ID}}">
-                    <div class="row">
-                        <div class="col-md-3">
-                        <select name="file_type" class="form-select" required>
-                            <optgroup label="📋 Задания и визируемые документы">
-                                <option value="tz">Техническое задание (ТЗ)</option>
-                                <option value="title_pages">Титульные листы</option>
-                                <option value="task">Учебное задание</option>
-                            </optgroup>
-                            <optgroup label="🔧 Конструкторская документация (ЕСКД)">
-                                <option value="structural_scheme">Схема структурная/функциональная</option>
-                                <option value="rpz">РПЗ (Расчетно-пояснительная записка)</option>
-                                <option value="electrical_scheme">Схема электрическая принципиальная</option>
-                                <option value="pcb_drawing">Чертеж ПП</option>
-                                <option value="assembly_drawing">Сборочный чертеж ПП</option>
-                                <option value="specification">Спецификация</option>
-                            </optgroup>
-                            <optgroup label="💻 Программная документация (ЕСПД)">
-                                <option value="algorithm_scheme">Схемы алгоритмов</option>
-                                <option value="software_structure">Схема структурная ПО</option>
-                                <option value="source_code">Исходные тексты программы</option>
-                                <option value="program_description">Описание программы</option>
-                            </optgroup>
-                            <optgroup label="📐 CAD / Моделирование">
-                                <option value="kompas_model">Компас-3D (.a3d, .cdw, .spw)</option>
-                                <option value="proteus_project">Proteus (.pdsprj, .dsn, .lyt)</option>
-                                <option value="pcb_files">PCB (.sch, .pcb, .gbr, .drl)</option>
-                                <option value="cad_3d">3D модели (.step, .stl, .igs)</option>
-                                <option value="makefile">MakeFiles и сборка</option>
-                            </optgroup>
-                            <optgroup label="📖 Эксплуатационная документация">
-                                <option value="user_manual">Руководство оператора</option>
-                                <option value="admin_manual">Руководство сисадмина</option>
-                                <option value="programmer_manual">Руководство программиста</option>
-                            </optgroup>
-                            <optgroup label="📊 Дополнительно">
-                                <option value="presentation">Презентация</option>
-                                <option value="posters">Плакаты/Графические материалы</option>
-                                <option value="video">Видео-руководства</option>
-                                <option value="other">Другое</option>
-                            </optgroup>
-                        </select>
-                        </div>
-                        <div class="col-md-4">
-                            <input type="file" name="file" class="form-control" required>
-                        </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary w-100">Загрузить</button>
-                        </div>
-                    </div>
-                    <div class="form-text mt-2">
-                        Разрешены: pdf, doc, docx, zip, txt (макс 10MB)
-                    </div>
-                </form>
-            </div>
+
+    {{if .error}}<div class="alert alert-danger">{{.error}}</div>{{end}}
+
+    <!-- ПРОГРЕСС И ФИЛЬТР -->
+    <div class="d-flex gap-3 mb-3 align-items-center flex-wrap">
+        <div class="progress flex-grow-1" style="height: 8px; max-width: 300px;">
+            <div id="progress-bar" class="progress-bar bg-success" role="progressbar" style="width: {{.progress.percent}}%"></div>
         </div>
-        
-        <h5>📁 Файлы проекта</h5>
-        <table class="table table-striped">
-            <thead>
+        <span id="progress-text" class="small text-muted">Прогресс: {{.progress.filled}}/{{.progress.total}} ({{.progress.percent}}%)</span>
+        <form method="GET" class="ms-auto">
+            <select name="type" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 220px;">
+                <option value="">Все типы</option>
+                {{range .required}}<option value="{{.}}" {{if eq . $.filterType}}selected{{end}}>{{index $.docLabels .}}</option>{{end}}
+            </select>
+        </form>
+    </div>
+
+    <!-- ФОРМА ЗАГРУЗКИ -->
+    <div class="card p-3 mb-4">
+        <form method="POST" action="/files/upload" enctype="multipart/form-data" class="row g-3 align-items-end">
+            <input type="hidden" name="project_id" value="{{.project.ID}}">
+            <div class="col-md-4">
+                <label class="form-label fw-medium small">Тип документа</label>
+                <select name="file_type" class="form-select" required>
+                    <option value="">Выберите тип</option>
+                    {{range .required}}<option value="{{.}}">{{index $.docLabels .}}</option>{{end}}
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label fw-medium small">Файл</label>
+                <input type="file" name="file" class="form-control" required>
+            </div>
+            <div class="col-md-3"><button type="submit" class="btn btn-primary w-100">⬆ Загрузить новый</button></div>
+        </form>
+        <small class="text-muted mt-2">Проверка антивирусом + версионирование применяются автоматически</small>
+    </div>
+
+    <!-- ТАБЛИЦА ФАЙЛОВ -->
+    <div class="table-responsive card p-0">
+        <table class="table table-striped mb-0 align-middle">
+            <thead><tr><th>Документ</th><th>Версия</th><th>Размер</th><th>Дата</th><th>Статус</th><th class="text-end">Действия</th></tr></thead>
+<tbody>
+    {{range .required}}
+    {{/* Фильтр: пропускаем, если выбран другой тип */}}
+    {{if and $.filterType (ne . $.filterType)}}{{continue}}{{end}}
+
+    {{/* ПОКАЗЫВАЕМ КАТЕГОРИЮ ТОЛЬКО ЕСЛИ ЕСТЬ ХОТЬ ОДИН ФАЙЛ */}}
+    {{if $files := index $.grouped .}}
+    <tr class="table-group-divider bg-light">
+        <td colspan="6">
+            <div class="d-flex justify-content-between align-items-center py-2">
+                <span class="fw-bold">📁 {{index $.docLabels .}} <small class="text-muted">({{.}})</small></span>
+                {{if eq $.user.Role "admin"}}
+                <button class="btn btn-sm {{if index $.completeMap .}}btn-success{{else}}btn-outline-primary{{end}} btn-toggle-complete"
+                        data-type="{{.}}" data-project="{{$.project.ID}}">
+                    {{if index $.completeMap .}}✅ Тип закрыт{{else}}⚙️ Отметить как достаточный{{end}}
+                </button>
+                {{end}}
+            </div>
+        </td>
+    </tr>
+                {{range $files}}
                 <tr>
-                    <th>Тип</th>
-                    <th>Имя</th>
-                    <th>Версия</th>
-                    <th>Размер</th>
-                    <th>Загружен</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{range .project.Files}}
-                {{if .IsActive}}
-                <tr>
-                    <td>{{.FileType}}</td>
-                    <td>{{.DisplayName}}</td>
+                    <td class="ps-4">{{.DisplayName}}</td>
                     <td>v{{.Version}}</td>
-                    <td>{{.Size}} bytes</td>
+                    <td>{{.Size}} B</td>
                     <td>{{.UploadedAt.Format "02.01.2006 15:04"}}</td>
                     <td>
-                        <a href="/files/{{.ID}}/download" class="btn btn-sm btn-success">Скачать</a>
-                        <a href="/files/{{.ID}}/history" class="btn btn-sm btn-info">История</a>
+                        {{if eq .Status "accepted"}}<span class="badge bg-success">Принят</span>
+                        {{else if eq .Status "revision"}}<span class="badge bg-warning text-dark">Доработка</span>
+                        {{else}}<span class="badge bg-info text-dark">На проверке</span>{{end}}
+                    </td>
+                    <td class="text-end align-middle">
+                        <!-- 📤 ОБНОВЛЕНИЕ (скрытая форма + кнопка-триггер) -->
+                        <form id="upd-{{.ID}}" method="POST" action="/files/upload" enctype="multipart/form-data" style="display:none;">
+                            <input type="hidden" name="project_id" value="{{.ProjectID}}">
+                            <input type="hidden" name="file_type" value="{{.FileType}}">
+                            <input type="hidden" name="logical_name" value="{{.LogicalName}}">
+                            <input type="file" name="file" required onchange="this.form.submit()">
+                        </form>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="document.getElementById('upd-{{.ID}}').querySelector('input[type=file]').click()">
+                            📤 Обновить
+                        </button>
+
+                        <!-- ✅ / ✎ ПРИНЯТЬ / ОТКЛОНИТЬ (только админ и только ожидающие файлы) -->
+                        {{if eq $.user.Role "admin"}}
+                            {{if or (eq .Status "uploaded") (eq .Status "updated")}}
+                            <form method="POST" action="/admin/files/{{.ID}}/review" style="display:inline;">
+                                <input type="hidden" name="status" value="accepted">
+                                <button type="submit" class="btn btn-sm btn-outline-success me-1" title="Принять">✅</button>
+                            </form>
+                            <form method="POST" action="/admin/files/{{.ID}}/review" style="display:inline;">
+                                <input type="hidden" name="status" value="revision">
+                                <button type="submit" class="btn btn-sm btn-outline-warning me-1" title="Вернуть на доработку">✎</button>
+                            </form>
+                            {{end}}
+                        {{end}}
+
+                        <!-- ⬇ СКАЧАТЬ -->
+                        <a href="/files/{{.ID}}/download" class="btn btn-sm btn-outline-secondary me-1">⬇</a>
+                        <!-- 🕒 ИСТОРИЯ -->
+                        <a href="/files/{{.ID}}/history" class="btn btn-sm btn-outline-info me-1">🕒</a>
+                        
+                        <!-- 🗑️ УДАЛЕНИЕ (soft delete, только админ или загрузчик) -->
+                        {{if or (eq $.user.Role "admin") (eq $.user.ID .UploadedBy)}}
+                        <form method="POST" action="/files/{{.ID}}/delete" onsubmit="return confirm('Архивировать эту версию? История сохранится.')" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                        </form>
+                        {{end}}
                     </td>
                 </tr>
+                {{end}}
                 {{end}}
                 {{end}}
             </tbody>
         </table>
     </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.btn-toggle-complete').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const type = this.dataset.type;
+            const pid  = this.dataset.project;
+            this.disabled = true; this.textContent = '⏳ Сохранение...';
+            try {
+                const res = await fetch(`/admin/projects/${pid}/documents/${type}/complete`, {
+                    method: 'POST', credentials: 'same-origin'
+                });
+                const data = await res.json();
+                if (data.success) location.reload();
+            } catch(e) { alert('❌ Ошибка: ' + e.message); }
+            finally { this.disabled = false; }
+        });
+    });
+});
+</script>
 </body>
 </html>
