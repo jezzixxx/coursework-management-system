@@ -1,10 +1,10 @@
 # Build stage
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26 AS builder
 
 WORKDIR /app
 
-# Install dependencies
-RUN apk add --no-cache git
+# Install dependencies (Debian uses apt)
+RUN apt-get update && apt-get install -y git ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -26,8 +26,8 @@ FROM alpine:3.19
 
 WORKDIR /root/
 
-# Install ca-certificates (ClamAV НЕ нужен здесь!)
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates for HTTPS
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
 COPY --from=builder /app/main .
