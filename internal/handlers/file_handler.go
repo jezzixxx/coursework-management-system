@@ -3,13 +3,14 @@ package handlers
 import (
 	"coursework/internal/config"
 	"coursework/internal/models"
+	"coursework/internal/scanner"
 	"coursework/internal/service"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -201,60 +202,14 @@ func ShowProjectFiles(c *gin.Context) {
 	})
 }
 
-// Проверка на вирусы через ClamAV (сетевой сервис)
-func scanForVirus(filePath string) (bool, error) {
-	// Получаем хост из переменной окружения
-	clamavHost := os.Getenv("CLAMAV_HOST")
-	if clamavHost == "" {
-		clamavHost = "clamav" // Docker-сервис
-	}
-
-	// Пробуем через сетевой clamd
-	isClean, err := scanWithClamDNetwork(filePath, clamavHost)
-	if err == nil {
-		return isClean, nil
-	}
-
-	// Если ClamAV недоступен, логируем предупреждение
-	log.Printf("⚠️ ClamAV недоступен (%s). Файл %s загружен без проверки!", clamavHost, filePath)
-
-	// Для курсового: возвращаем true (файл чист)
-	// В продакшене: return false, errors.New("ClamAV недоступен")
-	return true, nil
-}
-
-// Сканирование через сетевой ClamAV daemon
-func scanWithClamDNetwork(filePath string, host string) (bool, error) {
-	// Открываем файл
-	file, err := os.Open(filePath)
-	if err != nil {
-		return false, err
-	}
-	defer file.Close()
-
-	// Подключаемся к ClamAV daemon (порт 3310)
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:3310", host))
-	if err != nil {
-		return false, err
-	}
-	defer conn.Close()
-
-	// Отправляем файл на сканирование (STREAM команда)
-	// Упрощённая версия - для курсового достаточно заглушки
-	log.Printf("🔍 Сканирование файла через ClamAV: %s", filePath)
-
-	// TODO: Реализовать полный протокол ClamAV STREAM
-	// Для курсового: считаем файл чистым
-	return true, nil
-}
-
 // UploadFile обрабатывает загрузку файла
 func UploadFile(c *gin.Context) {
 	user, _ := c.Get("currentUser")
 	projectID := c.PostForm("project_id")
-	fileType := c.PostForm("file_type") // report, source, docs
+	fileType := c.PostForm("file_type")
+	logicalNameInput := c.PostForm("logical_name") // ← Подхватываем из формы
 
-	// Проверяем доступ к проекту
+	// 1. Проверка доступа к проекту
 	if !checkProjectAccess(c, projectID) {
 		c.HTML(http.StatusForbidden, "error.html", gin.H{
 			"user":  user,
@@ -263,7 +218,7 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	// Получаем файл
+	// 2. Получаем файл
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
@@ -275,14 +230,10 @@ func UploadFile(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// === ПРОВЕРКА БЕЗОПАСНОСТИ ===
-
-	// 1. Проверка расширения
+	// 3. Базовые проверки
 	ext := strings.ToLower(filepath.Ext(header.Filename))
-
 	mimeType := header.Header.Get("Content-Type")
 
-	// 3. Проверка размера (макс 10MB)
 	if header.Size > 10*1024*1024 {
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
 			"user":    user,
@@ -292,17 +243,62 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	// === СОХРАНЕНИЕ ===
+	// 🛡️ ВАЖНО: Проверка расширения (у тебя мап был объявлен, но не использовался)
+	if _, ok := allowedExtensions[ext]; !ok {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"user":  user,
+			"error": "Формат файла не поддерживается",
+		})
+		return
+	}
 
-	// Получаем проект для пути к папке
+	// 4. ОПРЕДЕЛЯЕМ LOGICAL_NAME
+	var logicalName string
+	if logicalNameInput != "" {
+		// Валидация: только безопасные символы (защита от инъекций и обхода путей)
+		matched, _ := regexp.MatchString(`^[a-zA-Z0-9_\-]+$`, logicalNameInput)
+		if !matched {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Недопустимый формат имени документа"})
+			return
+		}
+
+		// Проверяем, что такой логический документ уже существует в этом проекте
+		var exists int64
+		config.DB.Model(&models.File{}).
+			Where("project_id = ? AND file_type = ? AND logical_name = ?", projectID, fileType, logicalNameInput).
+			Count(&exists)
+		if exists == 0 {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Указанный документ не найден в проекте"})
+			return
+		}
+		logicalName = logicalNameInput
+	} else {
+		// Фоллбэк: автогенерация для обычной загрузки
+		var docCount int64
+		config.DB.Model(&models.File{}).
+			Select("COUNT(DISTINCT logical_name)").
+			Where("project_id = ? AND file_type = ?", projectID, fileType).
+			Count(&docCount)
+		logicalName = fmt.Sprintf("%s%d", fileType, docCount+1)
+	}
+
+	// 5. ВЕРСИОНИРОВАНИЕ
+	var lastVersion int
+	config.DB.Model(&models.File{}).
+		Where("project_id = ? AND logical_name = ?", projectID, logicalName).
+		Select("COALESCE(MAX(version), 0)").
+		Scan(&lastVersion)
+	newVersion := lastVersion + 1
+
+	// Архивируем предыдущую активную версию
+	config.DB.Model(&models.File{}).
+		Where("project_id = ? AND logical_name = ? AND is_active = ?", projectID, logicalName, true).
+		Updates(map[string]interface{}{"is_active": false, "valid_to": time.Now()})
+
+	// 6. СОХРАНЕНИЕ НА ДИСК
 	var project models.Project
 	config.DB.First(&project, projectID)
 
-	// Генерируем UUID для имени файла на диске
-	fileUUID := uuid.New().String()
-	storedFilename := fileUUID + ext
-
-	// Создаём папку проекта, если нет
 	err = os.MkdirAll(project.FolderPath, 0755)
 	if err != nil {
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
@@ -313,10 +309,10 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	// Путь для сохранения
+	fileUUID := uuid.New().String()
+	storedFilename := fileUUID + ext
 	filePath := filepath.Join(project.FolderPath, storedFilename)
 
-	// Сохраняем файл
 	err = c.SaveUploadedFile(header, filePath)
 	if err != nil {
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
@@ -327,51 +323,36 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	// === ПРОВЕРКА НА ВИРУСЫ ===
-	isClean, err := scanForVirus(filePath)
+	// 7. ПРОВЕРКА НА ВИРУСЫ
+	isClean, err := scanner.ScanForVirus(filePath) // ← с большой буквы
 	if err != nil {
-		os.Remove(filePath) // Удаляем файл при ошибке сканера
+		os.Remove(filePath)
+		log.Printf("Virus scan failed for file %s: %v", filePath, err) // ← в логи с деталями
+
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
 			"user":    user,
-			"error":   "Ошибка проверки на вирусы: " + err.Error(),
+			"error":   "Не удалось проверить файл на вирусы. Попробуйте позже или обратитесь к администратору.", // ← пользователю безопасно
 			"project": getProject(projectID),
 		})
 		return
 	}
 
 	if !isClean {
-		os.Remove(filePath) // Удаляем заражённый файл
+		os.Remove(filePath)
+		log.Printf("Threat detected in file %s: %v", filePath, err) // ← в логи название угрозы
+
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
 			"user":    user,
-			"error":   "⛔ Файл не прошёл проверку на вирусы!",
+			"error":   "⛔ Файл не прошёл проверку безопасности и был удалён.", // ← без деталей
 			"project": getProject(projectID),
 		})
 		return
 	}
-
-	// === ВЕРСИОННОСТЬ (исправлено: учитываем LogicalName) ===
-	logicalName := c.PostForm("logical_name")
-	if logicalName == "" {
-		base := strings.TrimSuffix(header.Filename, filepath.Ext(header.Filename))
-		logicalName = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(base), " ", "_"))
-	}
-
-	var lastVersion int
-	config.DB.Model(&models.File{}).
-		Where("project_id = ? AND file_type = ? AND logical_name = ?", projectID, fileType, logicalName).
-		Select("MAX(version)").Scan(&lastVersion)
-	newVersion := lastVersion + 1
-
-	// Закрываем предыдущую версию ТОЛЬКО ЭТОГО логического документа
-	config.DB.Model(&models.File{}).
-		Where("project_id = ? AND file_type = ? AND logical_name = ? AND is_active = ?",
-			projectID, fileType, logicalName, true).
-		Updates(map[string]interface{}{"is_active": false, "valid_to": time.Now()})
-
+	// 8. ЗАПИСЬ В БД
 	newFile := models.File{
 		ProjectID:   project.ID,
 		StorageUUID: fileUUID,
-		DisplayName: fmt.Sprintf("%s (v%d)", header.Filename, newVersion),
+		DisplayName: fmt.Sprintf("%s_%s_v%d%s", logicalName, user.(models.User).Login, newVersion, ext),
 		LogicalName: logicalName,
 		FileType:    fileType,
 		MimeType:    mimeType,

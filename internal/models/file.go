@@ -5,7 +5,7 @@ import "time"
 type File struct {
 	ID          uint   `gorm:"primaryKey"`
 	ProjectID   uint   `gorm:"not null;index"`
-	StorageUUID string `gorm:"uniqueIndex;not null;size:36"`
+	StorageUUID string `gorm:"type:varchar(255);uniqueIndex"` // ← увеличили лимит
 	DisplayName string `gorm:"not null;size:255"`
 	LogicalName string `gorm:"size:100;index"` // 🔹 НОВОЕ: группирует версии одного документа
 	FileType    string `gorm:"not null;size:50"`

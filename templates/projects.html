@@ -60,14 +60,14 @@
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-medium small">Статус</label>
-                    <select name="status" class="form-select form-select-sm">
-                        <option value="">Все статусы</option>
-                        <option value="new" {{if eq $.filterStatus "new"}}selected{{end}}>Новый</option>
-                        <option value="in_progress" {{if eq $.filterStatus "in_progress"}}selected{{end}}>В работе</option>
-                        <option value="review" {{if eq $.filterStatus "review"}}selected{{end}}>На проверке</option>
-                        <option value="approved" {{if eq $.filterStatus "approved"}}selected{{end}}>Утверждён</option>
-                        <option value="rejected" {{if eq $.filterStatus "rejected"}}selected{{end}}>Отклонён</option>
-                    </select>
+<select name="status" class="form-select form-select-sm">
+    <option value="">Все статусы</option>
+    <option value="new" {{if eq $.filterStatus "new"}}selected{{end}}>Новый</option>
+    <option value="needs_review" {{if eq $.filterStatus "needs_review"}}selected{{end}}>Нуждается в проверке</option>
+    <option value="revision" {{if eq $.filterStatus "revision"}}selected{{end}}>На доработку</option>
+    <option value="approved" {{if eq $.filterStatus "approved"}}selected{{end}}>Согласовано</option>
+    <option value="completed" {{if eq $.filterStatus "completed"}}selected{{end}}>Завершён</option>
+</select>
                 </div>
                 <div class="col-md-3 d-flex gap-2">
                     <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
@@ -97,16 +97,21 @@
                         <tr>
                             <td class="text-muted small">{{.ID}}</td>
                             <td class="fw-medium">{{.Title}}</td>
-                            <td>
-                                <span class="status-badge">
-                                    {{if eq .CurrentStatus "new"}}Новый
-                                    {{else if eq .CurrentStatus "in_progress"}}В работе
-                                    {{else if eq .CurrentStatus "review"}}На проверке
-                                    {{else if eq .CurrentStatus "approved"}}Утверждён
-                                    {{else if eq .CurrentStatus "rejected"}}Отклонён
-                                    {{else}}{{.CurrentStatus}}{{end}}
-                                </span>
-                            </td>
+<td class="align-middle">
+    {{if eq .CurrentStatus "new"}}
+        <span class="status-badge status-new">Новый</span>
+    {{else if eq .CurrentStatus "needs_review"}}
+        <span class="status-badge status-needs_review">Нуждается в проверке</span>
+    {{else if eq .CurrentStatus "revision"}}
+        <span class="status-badge status-revision">На доработку</span>
+    {{else if eq .CurrentStatus "approved"}}
+        <span class="status-badge status-approved">Согласовано</span>
+    {{else if eq .CurrentStatus "completed"}}
+        <span class="status-badge status-completed">Завершён</span>
+    {{else}}
+        <span class="status-badge">{{.CurrentStatus}}</span>
+    {{end}}
+</td>
 <td>
     <div class="progress" style="height: 6px;">
         <div class="progress-bar bg-primary" role="progressbar" 

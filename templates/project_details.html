@@ -40,31 +40,18 @@
             </div>
             <div class="card-body">
                 <p class="card-text">{{.project.Description}}</p>
-                <div class="mb-3">
-                    {{if eq .user.Role "admin"}}
-                <form action="/admin/projects/update-status" method="POST" class="d-inline">
-                    <h5> Статус проекта</h5>
-                    <input type="hidden" name="project_id" value="{{.project.ID}}">
-                    <select name="status" class="form-select d-inline w-auto">
-                        <option value="new" {{if eq .project.CurrentStatus "new"}}selected{{end}}>Новый</option>
-                        <option value="in_progress" {{if eq .project.CurrentStatus "in_progress"}}selected{{end}}>В работе</option>
-                        <option value="review" {{if eq .project.CurrentStatus "review"}}selected{{end}}>На проверке</option>
-                        <option value="approved" {{if eq .project.CurrentStatus "approved"}}selected{{end}}>Принят</option>
-                        <option value="rejected" {{if eq .project.CurrentStatus "rejected"}}selected{{end}}>На доработке</option>
-                    </select>
-                    <button type="submit" class="btn btn-primary btn-sm">Изменить статус</button>
-                </form>
-        {{else}}
-                    <span class="badge bg-primary fs-6">Статус: 
-                        {{if eq .project.CurrentStatus "new"}}Новый
-                        {{else if eq .project.CurrentStatus "in_progress"}}В работе
-                        {{else if eq .project.CurrentStatus "review"}}На проверке
-                        {{else if eq .project.CurrentStatus "approved"}}Принят
-                        {{else if eq .project.CurrentStatus "rejected"}}На доработке
-                        {{else}}{{.project.CurrentStatus}}{{end}}
-                    </span>
-                    {{end}}
-                </div>
+<div class="mb-3">
+    <label class="form-label fw-medium small">Статус проекта</label>
+    <div>
+        {{if eq .project.CurrentStatus "new"}}<span class="status-badge status-new">Новый</span>
+        {{else if eq .project.CurrentStatus "needs_review"}}<span class="status-badge status-needs_review">Нуждается в проверке</span>
+        {{else if eq .project.CurrentStatus "revision"}}<span class="status-badge status-revision">На доработку</span>
+        {{else if eq .project.CurrentStatus "approved"}}<span class="status-badge status-approved">Согласовано</span>
+        {{else if eq .project.CurrentStatus "completed"}}<span class="status-badge status-completed">Завершён</span>
+        {{else}} <span class="status-badge">{{.CurrentStatus}}</span>{{end}}
+    </div>
+    <small class="text-muted mt-1 d-block">Обновляется автоматически при загрузке, ревью файлов или закрытии пунктов чек-листа</small>
+</div>
                     <a href="/project/{{.project.ID}}/files" class="btn btn-mine">Файлы проекта</a>
             </div>
         </div>

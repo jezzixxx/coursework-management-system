@@ -50,6 +50,9 @@ github.com/cloudwego/base64x/internal/native
 github.com/cloudwego/base64x/internal/native/avx2
 github.com/cloudwego/base64x/internal/native/sse
 github.com/cloudwego/base64x/internal/rt
+# github.com/dutchcoders/go-clamd v0.0.0-20170520113014-b970184f4d9e
+## explicit
+github.com/dutchcoders/go-clamd
 # github.com/gabriel-vasile/mimetype v1.4.12
 ## explicit; go 1.21
 github.com/gabriel-vasile/mimetype
