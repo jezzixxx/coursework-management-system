@@ -6,6 +6,7 @@ import (
 	"coursework/internal/middleware"
 	"coursework/internal/models"
 	"coursework/internal/service"
+	"html/template"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -41,6 +42,9 @@ func main() {
 	// 4. Создаем веб-сервер Gin
 	r := gin.Default()
 
+	r.SetFuncMap(template.FuncMap{
+		"formatSize": handlers.FormatFileSize, // ← твоя функция из handlers
+	})
 	// Загружаем HTML шаблоны
 	root, _ := filepath.Abs(".")
 	r.LoadHTMLGlob(filepath.Join(root, "templates/*"))

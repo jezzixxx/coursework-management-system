@@ -155,6 +155,27 @@ var allowedMimeTypes = map[string]bool{
 	"model/stl":            true,
 }
 
+// FormatFileSize преобразует байты в человекочитаемый формат
+func FormatFileSize(bytes int64) string {
+	if bytes <= 0 {
+		return "0 B"
+	}
+
+	units := []string{"B", "KB", "MB", "GB", "TB"}
+	var unitIdx int
+	size := float64(bytes)
+
+	for size >= 1024 && unitIdx < len(units)-1 {
+		size /= 1024
+		unitIdx++
+	}
+
+	if unitIdx == 0 {
+		return fmt.Sprintf("%d B", int64(size))
+	}
+	return fmt.Sprintf("%.1f %s", size, units[unitIdx])
+}
+
 func ShowProjectFiles(c *gin.Context) {
 	user, _ := c.Get("currentUser")
 	idStr := c.Param("id")
