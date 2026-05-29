@@ -3,6 +3,7 @@ module coursework
 go 1.26
 
 require (
+	github.com/dutchcoders/go-clamd v0.0.0-20170520113014-b970184f4d9e
 	github.com/gin-gonic/gin v1.12.0
 	github.com/google/uuid v1.6.0
 	golang.org/x/crypto v0.48.0

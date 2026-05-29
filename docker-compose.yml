@@ -10,10 +10,11 @@ services:
       - DB_PASSWORD=postgres
       - DB_NAME=course_db
       - CLAMAV_HOST=clamav
-      - CLAMAV_PORT=3310
     depends_on:
-      - db
-      - clamav
+      db:
+        condition: service_started
+      clamav:
+        condition: service_healthy
     volumes:
       - ./uploads:/root/uploads
       - ./static:/root/static
@@ -33,16 +34,21 @@ services:
 
   clamav:
     image: clamav/clamav:stable
+    user: root
     ports:
       - "3310:3310"
     volumes:
       - clamav_data:/var/lib/clamav
+      - ./uploads:/root/uploads
     restart: unless-stopped
+    tty: true
+    stdin_open: true
     healthcheck:
-      test: ["CMD", "clamdscan", "--ping", "3310"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD-SHELL", "echo PING | nc -w 2 localhost 3310 | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 180s
 
 volumes:
   postgres_data:
