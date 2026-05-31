@@ -191,8 +191,15 @@ func ShowProjectFiles(c *gin.Context) {
 	}
 
 	var project models.Project
-	config.DB.Preload("Members").Preload("Files").First(&project, pid)
-
+	result := config.DB.Preload("Members").Preload("Files").First(&project, pid)
+	if result.Error != nil || project.ID == 0 {
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
+			"user":      user,
+			"error":     "Проект не найден",
+			"errorCode": "not_found", // ← Малышарики! 🦈
+		})
+		return
+	}
 	// 1. Группируем АКТИВНЫЕ файлы по FileType
 	grouped := make(map[string][]models.File)
 	for _, f := range project.Files {
@@ -259,7 +266,7 @@ func UploadFile(c *gin.Context) {
 	if header.Size > 100*1024*1024 {
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
 			"user":      user,
-			"error":     "Файл слишком большой (макс 100MB)",
+			"error":     "Файл слишком большой (макс 100 MB)",
 			"project":   getProject(projectID),
 			"errorCode": "validation",
 		})
@@ -292,7 +299,7 @@ func UploadFile(c *gin.Context) {
 			Where("project_id = ? AND file_type = ? AND logical_name = ?", projectID, fileType, logicalNameInput).
 			Count(&exists)
 		if exists == 0 {
-			c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Указанный документ не найден в проекте"})
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Указанный документ не найден в проекте", "errorCode": "not_found"})
 			return
 		}
 		logicalName = logicalNameInput
