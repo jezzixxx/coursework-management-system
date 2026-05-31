@@ -256,10 +256,10 @@ func UploadFile(c *gin.Context) {
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	mimeType := header.Header.Get("Content-Type")
 
-	if header.Size > 10*1024*1024 {
+	if header.Size > 100*1024*1024 {
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
 			"user":      user,
-			"error":     "Файл слишком большой (макс 10MB)",
+			"error":     "Файл слишком большой (макс 100MB)",
 			"project":   getProject(projectID),
 			"errorCode": "validation",
 		})
