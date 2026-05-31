@@ -212,6 +212,7 @@ func CreateProject(c *gin.Context) {
 		var member models.User
 		config.DB.First(&member, idStr)
 		project.Members = append(project.Members, member)
+		config.DB.Model(&models.User{}).Where("id = ?", member.ID).Update("project_id", project.ID)
 	}
 	config.DB.Save(&project)
 
@@ -260,8 +261,9 @@ func ShowProjectDetails(c *gin.Context) {
 
 	if project.ID == 0 {
 		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"user":  user,
-			"error": "Доступ к этому проекту запрещён",
+			"user":      user,
+			"error":     "Доступ к этому проекту запрещён",
+			"errorCode": "forbidden",
 		})
 		return
 	}
@@ -329,6 +331,7 @@ func AddMemberToProject(c *gin.Context) {
 	}
 
 	config.DB.Model(&project).Association("Members").Append(&student)
+	config.DB.Model(&models.User{}).Where("id = ?", studentID).Update("project_id", project.ID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -345,8 +348,9 @@ func ShowAddMemberPage(c *gin.Context) {
 	// 🔐 Проверка админа — остаётся здесь, это бизнес-логика хэндлера
 	if currentUser.Role != "admin" {
 		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"user":  user,
-			"error": "Только администратор может добавлять участников",
+			"user":      user,
+			"error":     "Только администратор может добавлять участников",
+			"errorCode": "forbidden",
 		})
 		return
 	}
@@ -354,7 +358,7 @@ func ShowAddMemberPage(c *gin.Context) {
 	projectID := c.Param("id")
 	var project models.Project
 	if err := config.DB.Preload("Members").First(&project, projectID).Error; err != nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"user": user, "error": "Проект не найден"})
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"user": user, "error": "Проект не найден", "errorCode": "not_found"})
 		return
 	}
 
@@ -411,6 +415,7 @@ func RemoveMemberFromProject(c *gin.Context) {
 	config.DB.First(&student, studentID)
 
 	config.DB.Model(&project).Association("Members").Delete(&student)
+	config.DB.Model(&models.User{}).Where("id = ?", studentID).Update("project_id", 0)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -545,8 +550,9 @@ func ShowEditProject(c *gin.Context) {
 	// Проверка: только админ
 	if currentUser.Role != "admin" {
 		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"user":  user,
-			"error": "Только администратор может редактировать проекты",
+			"user":      user,
+			"error":     "Только администратор может редактировать проекты",
+			"errorCode": "forbidden",
 		})
 		return
 	}
@@ -557,8 +563,9 @@ func ShowEditProject(c *gin.Context) {
 
 	if result.Error != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"user":  user,
-			"error": "Проект не найден",
+			"user":      user,
+			"error":     "Проект не найден",
+			"errorCode": "not_found",
 		})
 		return
 	}
@@ -587,9 +594,10 @@ func UpdateProject(c *gin.Context) {
 	// Валидация
 	if title == "" {
 		c.HTML(http.StatusOK, "edit_project.html", gin.H{
-			"user":    user,
-			"project": models.Project{ID: 0}, // заглушка
-			"error":   "Название проекта не может быть пустым",
+			"user":      user,
+			"project":   models.Project{ID: 0}, // заглушка
+			"error":     "Название проекта не может быть пустым",
+			"errorCode": "validation",
 		})
 		return
 	}
@@ -598,8 +606,9 @@ func UpdateProject(c *gin.Context) {
 	result := config.DB.Preload("Members").First(&project, projectID)
 	if result.Error != nil {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"user":  user,
-			"error": "Проект не найден",
+			"user":      user,
+			"error":     "Проект не найден",
+			"errorCode": "not_found",
 		})
 		return
 	}

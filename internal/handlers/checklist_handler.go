@@ -16,8 +16,9 @@ func ShowChecklist(c *gin.Context) {
 	// Проверяем доступ
 	if !checkProjectAccess(c, projectID) {
 		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"user":  user,
-			"error": "Доступ запрещён",
+			"user":      user,
+			"error":     "Доступ запрещён",
+			"errorCode": "forbidden",
 		})
 		return
 	}

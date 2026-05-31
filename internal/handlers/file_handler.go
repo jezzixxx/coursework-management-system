@@ -182,11 +182,11 @@ func ShowProjectFiles(c *gin.Context) {
 
 	pid, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Неверный ID проекта"})
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Неверный ID проекта", "errorCode": "validation"})
 		return
 	}
 	if !checkProjectAccess(c, idStr) {
-		c.HTML(http.StatusForbidden, "error.html", gin.H{"user": user, "error": "Доступ запрещён"})
+		c.HTML(http.StatusForbidden, "error.html", gin.H{"user": user, "error": "Доступ запрещён", "errorCode": "forbidden"})
 		return
 	}
 
@@ -233,8 +233,9 @@ func UploadFile(c *gin.Context) {
 	// 1. Проверка доступа к проекту
 	if !checkProjectAccess(c, projectID) {
 		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"user":  user,
-			"error": "Доступ к этому проекту запрещён",
+			"user":      user,
+			"error":     "Доступ к этому проекту запрещён",
+			"errorCode": "forbidden",
 		})
 		return
 	}
@@ -257,9 +258,10 @@ func UploadFile(c *gin.Context) {
 
 	if header.Size > 10*1024*1024 {
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
-			"user":    user,
-			"error":   "Файл слишком большой (макс 10MB)",
-			"project": getProject(projectID),
+			"user":      user,
+			"error":     "Файл слишком большой (макс 10MB)",
+			"project":   getProject(projectID),
+			"errorCode": "validation",
 		})
 		return
 	}
@@ -267,8 +269,9 @@ func UploadFile(c *gin.Context) {
 	// 🛡️ ВАЖНО: Проверка расширения (у тебя мап был объявлен, но не использовался)
 	if _, ok := allowedExtensions[ext]; !ok {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"user":  user,
-			"error": "Формат файла не поддерживается",
+			"user":      user,
+			"error":     "Формат файла не поддерживается",
+			"errorCode": "validation",
 		})
 		return
 	}
@@ -279,7 +282,7 @@ func UploadFile(c *gin.Context) {
 		// Валидация: только безопасные символы (защита от инъекций и обхода путей)
 		matched, _ := regexp.MatchString(`^[a-zA-Z0-9_\-]+$`, logicalNameInput)
 		if !matched {
-			c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Недопустимый формат имени документа"})
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Недопустимый формат имени документа", "errorCode": "validation"})
 			return
 		}
 
@@ -351,9 +354,10 @@ func UploadFile(c *gin.Context) {
 		log.Printf("Virus scan failed for file %s: %v", filePath, err) // ← в логи с деталями
 
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
-			"user":    user,
-			"error":   "Не удалось проверить файл на вирусы. Попробуйте позже или обратитесь к администратору.", // ← пользователю безопасно
-			"project": getProject(projectID),
+			"user":      user,
+			"error":     "Не удалось проверить файл на вирусы. Попробуйте позже или обратитесь к администратору.", // ← пользователю безопасно
+			"project":   getProject(projectID),
+			"errorCode": "system",
 		})
 		return
 	}
@@ -363,9 +367,10 @@ func UploadFile(c *gin.Context) {
 		log.Printf("Threat detected in file %s: %v", filePath, err) // ← в логи название угрозы
 
 		c.HTML(http.StatusOK, "project_files.html", gin.H{
-			"user":    user,
-			"error":   "⛔ Файл не прошёл проверку безопасности и был удалён.", // ← без деталей
-			"project": getProject(projectID),
+			"user":      user,
+			"error":     "Файл не прошёл проверку безопасности и был удалён.", // ← без деталей
+			"project":   getProject(projectID),
+			"errorCode": "system",
 		})
 		return
 	}
@@ -403,8 +408,9 @@ func DownloadFile(c *gin.Context) {
 	// Проверяем доступ к проекту
 	if !checkProjectAccess(c, fmt.Sprintf("%d", file.ProjectID)) {
 		c.HTML(http.StatusForbidden, "error.html", gin.H{
-			"user":  user,
-			"error": "Доступ к этому файлу запрещён",
+			"user":      user,
+			"error":     "Доступ к этому файлу запрещён",
+			"errorCode": "forbidden",
 		})
 		return
 	}
@@ -419,8 +425,9 @@ func DownloadFile(c *gin.Context) {
 	// Проверяем существование
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
-			"user":  user,
-			"error": "Файл не найден на сервере",
+			"user":      user,
+			"error":     "Файл не найден на сервере",
+			"errorCode": "not_found",
 		})
 		return
 	}
@@ -436,12 +443,12 @@ func ShowFileHistory(c *gin.Context) {
 
 	var file models.File
 	if err := config.DB.First(&file, fileID).Error; err != nil {
-		c.HTML(http.StatusNotFound, "error.html", gin.H{"user": user, "error": "Файл не найден"})
+		c.HTML(http.StatusNotFound, "error.html", gin.H{"user": user, "error": "Файл не найден", "errorCode": "not_found"})
 		return
 	}
 
 	if !checkProjectAccess(c, fmt.Sprintf("%d", file.ProjectID)) {
-		c.HTML(http.StatusForbidden, "error.html", gin.H{"user": user, "error": "Доступ запрещён"})
+		c.HTML(http.StatusForbidden, "error.html", gin.H{"user": user, "error": "Доступ запрещён", "errorCode": "forbidden"})
 		return
 	}
 
@@ -450,11 +457,15 @@ func ShowFileHistory(c *gin.Context) {
 	config.DB.Where("project_id = ? AND file_type = ? AND logical_name = ?",
 		file.ProjectID, file.FileType, file.LogicalName).
 		Order("version DESC").Find(&versions)
+	var project models.Project
+	config.DB.First(&project, file.ProjectID)
 
 	c.HTML(http.StatusOK, "file_history.html", gin.H{
-		"user":     user,
-		"file":     file,
-		"versions": versions,
+		"user":      user,
+		"file":      file,
+		"project":   project, // ← добавь
+		"versions":  versions,
+		"docLabels": config.DocumentLabels, // ← добавь
 	})
 }
 

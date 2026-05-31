@@ -1,62 +1,130 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>История версий</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История версий: {{.file.DisplayName}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/custom.css">
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark">
+    <!-- Навигация -->
+    <nav class="navbar navbar-expand-lg">
         <div class="container">
-            <a class="navbar-brand" href="#">Курсовые проекты</a>
-            <div class="d-flex">
-                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
-                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
+            <a class="navbar-brand fw-bold" href="/dashboard">КУРСОВЫЕ</a>
+            <div class="d-flex align-items-center gap-3">
+                <span class="text-muted small">{{.user.FullName}} <span class="badge bg-light text-dark border">{{.user.Role}}</span></span>
+                <a href="/logout" class="btn btn-outline-secondary btn-sm">Выход</a>
             </div>
         </div>
     </nav>
+
     <div class="container mt-4">
-        <h1>История версий: {{.file.DisplayName}}</h1>
-        <a href="/project/{{.file.ProjectID}}/files" class="btn btn-secondary mb-3">← Назад</a>
-        
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Версия</th>
-                    <th>Имя</th>
-                    <th>Размер</th>
-                    <th>Загружен</th>
-                    <th>Активен</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-<tbody>
-    {{range .versions}}
-    <tr class="{{if .IsActive}}table-success{{end}}">
-        <td class="fw-bold">v{{.Version}}
-            {{if .IsActive}}<span class="badge bg-success ms-1">Актуальная</span>
-            {{else}}<span class="badge bg-secondary ms-1">Архив</span>{{end}}
-        </td>
-        <td>{{.DisplayName}}</td>
-        <td>{{.Size}} bytes</td>
-        <td class="small text-muted">
-            с {{.ValidFrom.Format "02.01.2006 15:04"}}<br>
-            по {{if lt .ValidTo.Year 2900}}{{.ValidTo.Format "02.01.2006 15:04"}}{{else}}н.в.{{end}}
-        </td>
-        <td>
-            {{if eq .Status "accepted"}}<span class="badge bg-success">✅ Принят</span>
-            {{else if eq .Status "revision"}}<span class="badge bg-warning text-dark">✎ Доработка</span>
-            {{else if eq .Status "uploaded"}}<span class="badge bg-info text-dark">⬆ Загружен</span>
-            {{else if eq .Status "updated"}}<span class="badge bg-secondary">🔄 Обновлён</span>
-            {{else}}—{{end}}
-        </td>
-        <td class="small">ID: {{.UploadedBy}}</td>
-        <td>
-            <a href="/files/{{.ID}}/download" class="btn btn-sm btn-outline-primary">⬇ Скачать</a>
-        </td>
-    </tr>
-    {{end}}
-</tbody>
-        </table>
+        <!-- Хлебные крошки -->
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/dashboard">Главная</a></li>
+                {{if eq .user.Role "admin"}}<li class="breadcrumb-item"><a href="/projects">Проекты</a></li>{{end}}
+                <li class="breadcrumb-item"><a href="/project/{{.file.ProjectID}}">{{.project.Title}}</a></li>
+                <li class="breadcrumb-item"><a href="/project/{{.file.ProjectID}}/files">Файлы</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{.file.DisplayName}}</li>
+            </ol>
+        </nav>
+
+        <!-- Заголовок страницы -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="h4 mb-1">История версий</h2>
+                <p class="text-muted mb-0">{{.file.LogicalName}}</p>
+            </div>
+        </div>
+
+        {{if .error}}<div class="alert alert-danger">{{.error}}</div>{{end}}
+
+        <!-- Информация о файле -->
+        <div class="card p-3 mb-4">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="small text-muted mb-1">Текущая версия</div>
+                    <div class="fw-semibold">v{{.file.Version}}</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="small text-muted mb-1">Размер</div>
+                    <div class="fw-semibold">{{formatSize .file.Size}}</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="small text-muted mb-1">Тип документа</div>
+                    <div class="fw-semibold">{{index .docLabels .file.FileType}}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица версий -->
+        <div class="table-responsive card p-0">
+            <table class="table table-striped mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>Версия</th>
+                        <th>Имя файла</th>
+                        <th>Размер</th>
+                        <th>Период активности</th>
+                        <th>Статус</th>
+                        <th class="text-end">Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .versions}}
+                    <tr>
+                        <td>
+                            <span class="fw-semibold">v{{.Version}}</span>
+                        </td>
+                        <td>{{.DisplayName}}</td>
+                        <td>{{formatSize .Size}}</td>
+                        <td>
+                            <div class="small">
+                                <div class="text-muted">с {{.ValidFrom.Format "02.01.2006 15:04"}}</div>
+                                {{if lt .ValidTo.Year 2900}}
+                                    <div class="text-muted">по {{.ValidTo.Format "02.01.2006 15:04"}}</div>
+                                {{else}}
+                                    <div class="text-success">по н.в.</div>
+                                {{end}}
+                            </div>
+                        </td>
+                        <td>
+                            {{if eq .Status "accepted"}}
+                                <span class="file-status-badge file-status-accepted">Принят</span>
+                            {{else if eq .Status "revision"}}
+                                <span class="file-status-badge file-status-revision">Доработка</span>
+                            {{else if eq .Status "updated"}}
+                                <span class="file-status-badge file-status-updated">Обновлён</span>
+                            {{else if eq .Status "uploaded"}}
+                                <span class="file-status-badge file-status-uploaded">На проверке</span>
+                            {{else}}
+                                <span class="text-muted">—</span>
+                            {{end}}
+                        </td>
+                        <td class="text-end align-middle">
+                            <!-- ⬇ СКАЧАТЬ -->
+                            <a href="/files/{{.ID}}/download" class="file-action-btn btn-download" title="Скачать" aria-label="Скачать">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            </a>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        {{if not .versions}}
+        <div class="alert alert-info mt-3">
+            ℹ️ История версий пуста
+        </div>
+        {{end}}
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

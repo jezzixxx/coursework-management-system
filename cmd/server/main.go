@@ -67,9 +67,18 @@ func main() {
 	{
 		protected.GET("/dashboard", func(c *gin.Context) {
 			user, _ := c.Get("currentUser")
+			u := user.(models.User)
+
 			c.HTML(http.StatusOK, "dashboard.html", gin.H{
-				"user": user,
+				"user":       u,
+				"hasProject": u.ProjectID != 0, // Быстрая проверка без доп. запросов
+				"projectID":  u.ProjectID,
 			})
+		})
+		// Заглушка для студентов без проекта
+		protected.GET("/project/have_no", func(c *gin.Context) {
+			user, _ := c.Get("currentUser")
+			c.HTML(http.StatusOK, "no_project.html", gin.H{"user": user})
 		})
 		protected.GET("/logout", handlers.Logout)
 
