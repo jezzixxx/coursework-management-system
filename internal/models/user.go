@@ -14,6 +14,7 @@ type User struct {
 	Group              string `gorm:"size:20"`
 	IsActive           bool   `gorm:"default:true"`
 	MustChangePassword bool   `gorm:"default:true"`
+	ProjectID          uint   `gorm:"default:0;index"`
 }
 
 // SetPassword хэширует пароль перед сохранением (Безопасность!)

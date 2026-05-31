@@ -1,25 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Ошибка</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ошибка | Курсовые проекты</title>
+    
+    <!-- Шрифт Montserrat из твоего custom.css -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Твои стили -->
+    <link rel="stylesheet" href="/static/custom.css">
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">Курсовые проекты</a>
-            <div class="d-flex">
-                <span class="navbar-text text-white me-3">{{.user.FullName}}</span>
-                <a href="/logout" class="btn btn-outline-light btn-sm">Выход</a>
+    <div class="container" style="max-width: 700px; margin: 80px auto; padding: 0 1rem;">
+        <div class="card" style="text-align: center; padding: 3rem 2rem;">
+            {{ $code := or .errorCode "system" }}
+
+            <!-- SVG Иконки (минималистичные, в твоей цветовой гамме) -->
+            <div style="margin-bottom: 1.5rem; color: var(--bs-secondary-color);">
+                {{if eq $code "forbidden"}}
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                {{else if eq $code "not_found"}}
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        <line x1="8" y1="8" x2="14" y2="14"></line>
+                        <line x1="14" y1="8" x2="8" y2="14"></line>
+                    </svg>
+                {{else}}
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                {{end}}
             </div>
+
+            <!-- Заголовок ошибки -->
+            {{if eq $code "forbidden"}}
+                <h2 style="margin-bottom: 0.5rem;">Доступ ограничен</h2>
+            {{else if eq $code "not_found"}}
+                <h2 style="margin-bottom: 0.5rem;">Ничего не найдено</h2>
+            {{else}}
+                <h2 style="margin-bottom: 0.5rem;">Произошла ошибка</h2>
+            {{end}}
+
+            <!-- Сообщения для студентов -->
+            {{if ne .user.Role "admin"}}
+                <p style="color: var(--bs-secondary-color); font-size: 1.1rem; margin: 1.5rem 0; line-height: 1.6;">
+                    {{if eq $code "forbidden"}}
+                        Это не твоё <span class="highlight-delo">DELO</span>
+                    {{else if eq $code "not_found"}}
+                        Тут будет проект малышариков, но пока тут ничего нет
+                    {{else}}
+                        Что-то пошло не так. Попробуйте обновить страницу или вернитесь позже.
+                    {{end}}
+                </p>
+            {{end}}
+
+            <!-- Техническая справка для админа -->
+            {{if eq .user.Role "admin"}}
+                <div style="background: var(--bs-card-bg); border: 1px solid var(--bs-border-color); border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; text-align: left;">
+                    <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: var(--bs-body-color); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Техническая справка</h4>
+                    <code style="display: block; white-space: pre-wrap; background: rgba(0,0,0,0.03); padding: 1rem; border-radius: 6px; font-family: monospace; color: var(--bs-secondary-color); font-size: 0.85rem; line-height: 1.5;">
+{{.error}}
+                    </code>
+                </div>
+            {{end}}
+
+            <hr style="border: none; border-top: 1px solid var(--bs-border-color); margin: 2rem 0;">
+            <a href="/dashboard" class="btn btn-primary">Вернуться на главную</a>
         </div>
-    </nav>
-    <div class="container mt-4">
-        <div class="alert alert-danger">
-            <h4>⛔ Доступ запрещён</h4>
-            <p>{{.error}}</p>
-        </div>
-        <a href="/my-projects" class="btn btn-primary">← К моим проектам</a>
     </div>
 </body>
 </html>

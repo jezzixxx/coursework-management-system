@@ -438,3 +438,100 @@ input[type="file"]::file-selector-button:hover {
   background-color: #059669;
   border-color: #047857;
 }
+/* === Кнопки действий в таблице файлов === */
+.file-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin: 0 2px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.04);
+  color: var(--bs-secondary-color);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+.file-action-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+.file-action-btn:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.file-action-btn:active {
+  transform: translateY(0);
+}
+
+/* Цветовые модификаторы (светлая тема) */
+.btn-update { color: #2563eb; }
+.btn-update:hover { background-color: rgba(37, 99, 235, 0.1); border-color: rgba(37, 99, 235, 0.3); }
+
+.btn-accept { color: #10b981; }
+.btn-accept:hover { background-color: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); }
+
+.btn-revision { color: #f59e0b; }
+.btn-revision:hover { background-color: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.3); }
+
+.btn-download { color: #64748b; }
+.btn-download:hover { background-color: rgba(100, 116, 139, 0.1); border-color: rgba(100, 116, 139, 0.3); }
+
+.btn-history { color: #6366f1; }
+.btn-history:hover { background-color: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); }
+
+.btn-delete { color: #ef4444; }
+.btn-delete:hover { background-color: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); }
+
+/* Тёмная тема */
+@media (prefers-color-scheme: dark) {
+  .file-action-btn {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+  }
+  .file-action-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  .btn-update { color: #60a5fa; }
+  .btn-update:hover { background-color: rgba(96, 165, 250, 0.15); border-color: rgba(96, 165, 250, 0.3); }
+  
+  .btn-accept { color: #34d399; }
+  .btn-accept:hover { background-color: rgba(52, 211, 153, 0.15); border-color: rgba(52, 211, 153, 0.3); }
+  
+  .btn-revision { color: #fbbf24; }
+  .btn-revision:hover { background-color: rgba(251, 191, 36, 0.15); border-color: rgba(251, 191, 36, 0.3); }
+  
+  .btn-download { color: #cbd5e1; }
+  .btn-download:hover { background-color: rgba(203, 213, 225, 0.1); border-color: rgba(203, 213, 225, 0.2); }
+  
+  .btn-history { color: #818cf8; }
+  .btn-history:hover { background-color: rgba(129, 140, 248, 0.15); border-color: rgba(129, 140, 248, 0.3); }
+  
+  .btn-delete { color: #f87171; }
+  .btn-delete:hover { background-color: rgba(248, 113, 113, 0.15); border-color: rgba(248, 113, 113, 0.3); }
+}
+/* === Акцентное слово для студенческой ошибки === */
+.highlight-delo {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: linear-gradient(135deg, #10b981 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  position: relative;
+}
+
+/* Фоллбэк для браузеров без поддержки gradient-text */
+@supports not (-webkit-background-clip: text) {
+  .highlight-delo {
+    background: none;
+    -webkit-text-fill-color: initial;
+    color: #10b981;
+    border-bottom: 2px solid #2563eb;
+  }
+}

@@ -111,44 +111,56 @@
         <span class="file-status-badge">{{.Status}}</span>
     {{end}}
 </td>
-                    <td class="text-end align-middle">
-                        <!-- 📤 ОБНОВЛЕНИЕ (скрытая форма + кнопка-триггер) -->
-                        <form id="upd-{{.ID}}" method="POST" action="/files/upload" enctype="multipart/form-data" style="display:none;">
-                            <input type="hidden" name="project_id" value="{{.ProjectID}}">
-                            <input type="hidden" name="file_type" value="{{.FileType}}">
-                            <input type="hidden" name="logical_name" value="{{.LogicalName}}">
-                            <input type="file" name="file" required onchange="this.form.submit()">
-                        </form>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="document.getElementById('upd-{{.ID}}').querySelector('input[type=file]').click()">
-                            Обновить
-                        </button>
+                   <td class="text-end align-middle">
+    <!-- 📤 ОБНОВЛЕНИЕ -->
+    <form id="upd-{{.ID}}" method="POST" action="/files/upload" enctype="multipart/form-data" style="display:none;">
+        <input type="hidden" name="project_id" value="{{.ProjectID}}">
+        <input type="hidden" name="file_type" value="{{.FileType}}">
+        <input type="hidden" name="logical_name" value="{{.LogicalName}}">
+        <input type="file" name="file" required onchange="this.form.submit()">
+    </form>
+    <button type="button" class="file-action-btn btn-update" 
+            onclick="document.getElementById('upd-{{.ID}}').querySelector('input[type=file]').click()" 
+            title="Обновить файл" aria-label="Обновить файл">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    </button>
 
-                        <!-- ✅ / ✎ ПРИНЯТЬ / ОТКЛОНИТЬ (только админ и только ожидающие файлы) -->
-                        {{if eq $.user.Role "admin"}}
-                            {{if or (eq .Status "uploaded") (eq .Status "updated")}}
-                            <form method="POST" action="/admin/files/{{.ID}}/review" style="display:inline;">
-                                <input type="hidden" name="status" value="accepted">
-                                <button type="submit" class="btn btn-sm btn-outline-success me-1" title="Принять">✅</button>
-                            </form>
-                            <form method="POST" action="/admin/files/{{.ID}}/review" style="display:inline;">
-                                <input type="hidden" name="status" value="revision">
-                                <button type="submit" class="btn btn-sm btn-outline-warning me-1" title="Вернуть на доработку">✎</button>
-                            </form>
-                            {{end}}
-                        {{end}}
+    <!-- ✅ / ✎ ПРИНЯТЬ / ОТКЛОНИТЬ -->
+    {{if eq $.user.Role "admin"}}
+        {{if or (eq .Status "uploaded") (eq .Status "updated")}}
+        <form method="POST" action="/admin/files/{{.ID}}/review" style="display:inline;">
+            <input type="hidden" name="status" value="accepted">
+            <button type="submit" class="file-action-btn btn-accept" title="Принять" aria-label="Принять">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
+        </form>
+        <form method="POST" action="/admin/files/{{.ID}}/review" style="display:inline;">
+            <input type="hidden" name="status" value="revision">
+            <button type="submit" class="file-action-btn btn-revision" title="На доработку" aria-label="На доработку">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+            </button>
+        </form>
+        {{end}}
+    {{end}}
 
-                        <!-- ⬇ СКАЧАТЬ -->
-                        <a href="/files/{{.ID}}/download" class="btn btn-sm btn-outline-secondary me-1">⬇</a>
-                        <!-- 🕒 ИСТОРИЯ -->
-                        <a href="/files/{{.ID}}/history" class="btn btn-sm btn-outline-info me-1">🕒</a>
-                        
-                        <!-- 🗑️ УДАЛЕНИЕ (soft delete, только админ или загрузчик) -->
-                        {{if or (eq $.user.Role "admin") (eq $.user.ID .UploadedBy)}}
-                        <form method="POST" action="/files/{{.ID}}/delete" onsubmit="return confirm('Архивировать эту версию? История сохранится.')" style="display:inline;">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
-                        </form>
-                        {{end}}
-                    </td>
+    <!-- ⬇ СКАЧАТЬ -->
+    <a href="/files/{{.ID}}/download" class="file-action-btn btn-download" title="Скачать" aria-label="Скачать">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </a>
+    <!-- 🕒 ИСТОРИЯ -->
+    <a href="/files/{{.ID}}/history" class="file-action-btn btn-history" title="История версий" aria-label="История версий">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </a>
+    
+    <!-- 🗑️ УДАЛЕНИЕ -->
+    {{if or (eq $.user.Role "admin") (eq $.user.ID .UploadedBy)}}
+    <form method="POST" action="/files/{{.ID}}/delete" onsubmit="return confirm('Архивировать эту версию? История сохранится.')" style="display:inline;">
+        <button type="submit" class="file-action-btn btn-delete" title="Архивировать" aria-label="Архивировать">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+    </form>
+    {{end}}
+</td>
                 </tr>
                 {{end}}
                 {{end}}
