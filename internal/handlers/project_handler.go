@@ -259,13 +259,35 @@ func ShowProjectDetails(c *gin.Context) {
 			First(&project)
 	}
 
-	if project.ID == 0 {
-		c.HTML(http.StatusForbidden, "error.html", gin.H{
+	result := config.DB.Preload("Members").Preload("Files").
+		Preload("Comments").Preload("Comments.Author").
+		First(&project, projectID)
+
+	if result.Error != nil || project.ID == 0 {
+		// Проект не найден в БД → Малышарики
+		c.HTML(http.StatusNotFound, "error.html", gin.H{
 			"user":      user,
-			"error":     "Доступ к этому проекту запрещён",
-			"errorCode": "forbidden",
+			"error":     "Проект не найден",
+			"errorCode": "not_found",
 		})
 		return
+	}
+
+	// Проект есть, но проверяем доступ
+	if currentUser.Role != "admin" {
+		var count int64
+		config.DB.Table("project_members").
+			Where("user_id = ? AND project_id = ?", currentUser.ID, projectID).
+			Count(&count)
+		if count == 0 {
+			// Доступ запрещён → Не твоё ДЕЛО
+			c.HTML(http.StatusForbidden, "error.html", gin.H{
+				"user":      user,
+				"error":     "Доступ к этому проекту запрещён",
+				"errorCode": "forbidden",
+			})
+			return
+		}
 	}
 
 	c.HTML(http.StatusOK, "project_details.html", gin.H{
