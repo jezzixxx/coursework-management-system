@@ -264,22 +264,13 @@ func UploadFile(c *gin.Context) {
 	mimeType := header.Header.Get("Content-Type")
 
 	if header.Size > 100*1024*1024 {
-		c.HTML(http.StatusOK, "project_files.html", gin.H{
-			"user":      user,
-			"error":     "Файл слишком большой (макс 100 MB)",
-			"project":   getProject(projectID),
-			"errorCode": "validation",
-		})
+		renderProjectFilesPage(c, user, projectID, c.Query("type"), "Файл слишком большой (макс 100 MB)", "validation")
 		return
 	}
 
 	// 🛡️ ВАЖНО: Проверка расширения (у тебя мап был объявлен, но не использовался)
 	if _, ok := allowedExtensions[ext]; !ok {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"user":      user,
-			"error":     "Формат файла не поддерживается",
-			"errorCode": "validation",
-		})
+		renderProjectFilesPage(c, user, projectID, c.Query("type"), "Формат файла не поддерживается", "validation")
 		return
 	}
 
@@ -289,7 +280,7 @@ func UploadFile(c *gin.Context) {
 		// Валидация: только безопасные символы (защита от инъекций и обхода путей)
 		matched, _ := regexp.MatchString(`^[a-zA-Z0-9_\-]+$`, logicalNameInput)
 		if !matched {
-			c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Недопустимый формат имени документа", "errorCode": "validation"})
+			renderProjectFilesPage(c, user, projectID, c.Query("type"), "Недопустимый формат имени документа", "validation")
 			return
 		}
 
@@ -299,7 +290,7 @@ func UploadFile(c *gin.Context) {
 			Where("project_id = ? AND file_type = ? AND logical_name = ?", projectID, fileType, logicalNameInput).
 			Count(&exists)
 		if exists == 0 {
-			c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Указанный документ не найден в проекте", "errorCode": "not_found"})
+			renderProjectFilesPage(c, user, projectID, c.Query("type"), "Указанный документ не найден в проекте", "validation")
 			return
 		}
 		logicalName = logicalNameInput
@@ -345,12 +336,9 @@ func UploadFile(c *gin.Context) {
 	filePath := filepath.Join(project.FolderPath, storedFilename)
 
 	err = c.SaveUploadedFile(header, filePath)
+	// Ошибка сохранения на диск
 	if err != nil {
-		c.HTML(http.StatusOK, "project_files.html", gin.H{
-			"user":    user,
-			"error":   "Ошибка сохранения: " + err.Error(),
-			"project": getProject(projectID),
-		})
+		renderProjectFilesPage(c, user, projectID, c.Query("type"), "Ошибка сохранения: "+err.Error(), "system")
 		return
 	}
 
@@ -358,27 +346,15 @@ func UploadFile(c *gin.Context) {
 	isClean, err := scanner.ScanForVirus(filePath) // ← с большой буквы
 	if err != nil {
 		os.Remove(filePath)
-		log.Printf("Virus scan failed for file %s: %v", filePath, err) // ← в логи с деталями
-
-		c.HTML(http.StatusOK, "project_files.html", gin.H{
-			"user":      user,
-			"error":     "Не удалось проверить файл на вирусы. Попробуйте позже или обратитесь к администратору.", // ← пользователю безопасно
-			"project":   getProject(projectID),
-			"errorCode": "system",
-		})
+		log.Printf("Virus scan failed for file %s: %v", filePath, err)
+		renderProjectFilesPage(c, user, projectID, c.Query("type"), "Не удалось проверить файл на вирусы. Попробуйте позже.", "system")
 		return
 	}
 
 	if !isClean {
 		os.Remove(filePath)
-		log.Printf("Threat detected in file %s: %v", filePath, err) // ← в логи название угрозы
-
-		c.HTML(http.StatusOK, "project_files.html", gin.H{
-			"user":      user,
-			"error":     "Файл не прошёл проверку безопасности и был удалён.", // ← без деталей
-			"project":   getProject(projectID),
-			"errorCode": "system",
-		})
+		log.Printf("Threat detected in file %s", filePath)
+		renderProjectFilesPage(c, user, projectID, c.Query("type"), " Файл не прошёл проверку безопасности и был удалён.", "security")
 		return
 	}
 	// 8. ЗАПИСЬ В БД
@@ -582,5 +558,52 @@ func ToggleDocumentTypeComplete(c *gin.Context) {
 		"success":    true,
 		"isComplete": docType.IsComplete,
 		"progress":   gin.H{"filled": filled, "total": total, "percent": percent},
+	})
+}
+
+// renderProjectFilesPage собирает ВСЕ данные для страницы и рендерит шаблон
+// Используется и в GET, и в POST при ошибках, чтобы UI не ломался
+func renderProjectFilesPage(c *gin.Context, user interface{}, projectIDStr, filterType, errorMsg, errorCode string) {
+	pid, err := strconv.ParseUint(projectIDStr, 10, 64)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{"user": user, "error": "Неверный ID проекта", "errorCode": "validation"})
+		return
+	}
+
+	// 1. Загружаем проект и файлы
+	var project models.Project
+	config.DB.Preload("Members").Preload("Files").First(&project, pid)
+
+	// 2. Группируем активные файлы
+	grouped := make(map[string][]models.File)
+	for _, f := range project.Files {
+		if f.IsActive {
+			grouped[f.FileType] = append(grouped[f.FileType], f)
+		}
+	}
+
+	// 3. Флаги завершения типов документов
+	var docTypes []models.ProjectDocumentType
+	config.DB.Where("project_id = ?", pid).Find(&docTypes)
+	completeMap := make(map[string]bool)
+	for _, dt := range docTypes {
+		completeMap[dt.TypeCode] = dt.IsComplete
+	}
+
+	// 4. Прогресс
+	filled, total, percent, _ := service.CalculateProjectProgress(uint(pid))
+
+	// 5. Рендерим шаблон
+	c.HTML(http.StatusOK, "project_files.html", gin.H{
+		"user":        user,
+		"project":     project,
+		"grouped":     grouped,
+		"completeMap": completeMap,
+		"docLabels":   config.DocumentLabels,
+		"required":    config.DefaultRequiredDocuments,
+		"progress":    gin.H{"filled": filled, "total": total, "percent": percent},
+		"filterType":  filterType,
+		"error":       errorMsg,
+		"errorCode":   errorCode,
 	})
 }
