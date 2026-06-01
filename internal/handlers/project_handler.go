@@ -248,23 +248,17 @@ func ShowProjectDetails(c *gin.Context) {
 	currentUser := user.(models.User)
 	projectID := c.Param("id")
 
+	// 1. ЗАГРУЗКА ДАННЫХ
+	// Загружаем проект чисто, без JOIN-ов, чтобы GORM корректно подтянул Preload
 	var project models.Project
-
-	if currentUser.Role == "admin" {
-		config.DB.Preload("Members").Preload("Files").Preload("Comments").Preload("Comments.Author").First(&project, projectID)
-	} else {
-		config.DB.Preload("Members").Preload("Files").Preload("Comments").Preload("Comments.Author").
-			Joins("JOIN project_members ON project_members.project_id = projects.id").
-			Where("project_members.user_id = ? AND projects.id = ?", currentUser.ID, projectID).
-			First(&project)
-	}
-
-	result := config.DB.Preload("Members").Preload("Files").
-		Preload("Comments").Preload("Comments.Author").
+	result := config.DB.
+		Preload("Members").
+		Preload("Files").
+		Preload("Comments").
+		Preload("Comments.Author"). // 👈 Важно: подгружаем авторов
 		First(&project, projectID)
 
 	if result.Error != nil || project.ID == 0 {
-		// Проект не найден в БД → Малышарики
 		c.HTML(http.StatusNotFound, "error.html", gin.H{
 			"user":      user,
 			"error":     "Проект не найден",
@@ -273,23 +267,27 @@ func ShowProjectDetails(c *gin.Context) {
 		return
 	}
 
-	// Проект есть, но проверяем доступ
+	// 2. ПРОВЕРКА ДОСТУПА
+	// Админ видит всё. Студент видит, только если он есть в Members
 	if currentUser.Role != "admin" {
-		var count int64
-		config.DB.Table("project_members").
-			Where("user_id = ? AND project_id = ?", currentUser.ID, projectID).
-			Count(&count)
-		if count == 0 {
-			// Доступ запрещён → Не твоё ДЕЛО
+		isMember := false
+		for _, m := range project.Members {
+			if m.ID == currentUser.ID {
+				isMember = true
+				break
+			}
+		}
+		if !isMember {
 			c.HTML(http.StatusForbidden, "error.html", gin.H{
 				"user":      user,
-				"error":     "Доступ к этому проекту запрещён",
+				"error":     "Доступ запрещён",
 				"errorCode": "forbidden",
 			})
 			return
 		}
 	}
 
+	// 3. РЕНДЕРИНГ
 	c.HTML(http.StatusOK, "project_details.html", gin.H{
 		"user":    user,
 		"project": project,

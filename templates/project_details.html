@@ -81,28 +81,35 @@
                 
                 <!-- Список комментариев -->
                 {{if .project.Comments}}
-                <div class="comments-list">
-                    {{range .project.Comments}}
-                    <div class="card mb-2">
-                        <div class="card-body">
-                            <p class="mb-1">{{.Text}}</p>
-                            <small class="text-muted">
-                                {{.Author.FullName}} • {{.CreatedAt.Format "02.01.2006 15:04"}}
-                            </small>
-                            {{if or (eq $.user.Role "admin") (eq .AuthorID $.user.ID)}}
-                            <form action="/comments/delete" method="POST" class="d-inline float-end">
-                                <input type="hidden" name="comment_id" value="{{.ID}}">
-                                <input type="hidden" name="project_id" value="{{.project.ID}}">
-                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Удалить комментарий?')">🗑️</button>
-                            </form>
-                            {{end}}
-                        </div>
-                    </div>
-                    {{end}}
-                </div>
-                {{else}}
-                <p class="text-muted">Комментариев пока нет</p>
-                {{end}}
+    {{range .project.Comments}}
+    <div class="comment-item mb-3 p-3 border rounded bg-light">
+        <p class="mb-1">{{.Text}}</p>
+        <small class="text-muted">
+            <!-- Защита от nil, если автор не подгрузился -->
+            {{if .Author}}
+                {{.Author.FullName}} • 
+            {{else}}
+                Удаленный пользователь •
+            {{end}}
+            {{.CreatedAt.Format "02.01.2006 15:04"}}
+        </small>
+
+        {{if or (eq $.user.Role "admin") (eq .AuthorID $.user.ID)}}
+        <form method="POST" action="/comments/delete" class="d-inline ms-2" onsubmit="return confirm('Удалить комментарий?')">
+            <input type="hidden" name="comment_id" value="{{.ID}}">
+            <input type="hidden" name="project_id" value="{{$.project.ID}}">
+            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size: 0.75rem;">
+                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" fill="none" stroke-width="2" stroke-linecap="round"/><path d="M10 11v6M14 11v6" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+        </form>
+        {{end}}
+    </div>
+    {{end}}
+{{else}}
+    <div class="text-center text-muted py-4">
+        <p>Комментариев пока нет. Будьте первым!</p>
+    </div>
+{{end}}
             </div>
         </div>
 </body>
